@@ -1,5 +1,6 @@
 package com.kami.order.modules;
 
+import com.kami.order.cursor.GuiCursorControl;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
@@ -231,6 +232,17 @@ public class KamiOrderBot extends Module {
         .build()
     );
 
+    /**
+     * Tắt vanilla kéo chuột về giữa khi mở GUI order/confirm.
+     * Thao tác slot vẫn silent qua clickSlot — không bay chuột.
+     */
+    private final Setting<Boolean> disableGuiCursorCenter = sgGeneral.add(new BoolSetting.Builder()
+        .name("disable-gui-cursor-center")
+        .description("Bật: không kéo cursor hệ thống về giữa màn hình khi mở GUI. Tắt: hành vi Minecraft mặc định.")
+        .defaultValue(true)
+        .build()
+    );
+
     // ── State machine ──
     private enum State {
         SEND_ORDER,
@@ -308,6 +320,8 @@ public class KamiOrderBot extends Module {
         }
 
         resetState();
+        GuiCursorControl.syncFromOrderModule(true, disableGuiCursorCenter.get());
+
         String cmdArg = getOrderCommandArg();
         String filter = getTargetItemFilterName();
         if (filter == null || filter.isBlank()) {
@@ -331,13 +345,16 @@ public class KamiOrderBot extends Module {
         if (resume) {
             log("Tiếp tục Order sau Drop — " + loopInfo + " | /order " + cmdArg + " | item=" + filter);
         } else {
-            log("Bật Auto Order — " + loopInfo + " | /order " + cmdArg + " | lọc item=" + filter);
+            log("Bật Auto Order — " + loopInfo + " | /order " + cmdArg + " | lọc item=" + filter
+                + " | no-cursor-center=" + disableGuiCursorCenter.get());
         }
         state = State.SEND_ORDER;
     }
 
     @Override
     public void onDeactivate() {
+        GuiCursorControl.syncFromOrderModule(false, disableGuiCursorCenter.get());
+        GuiCursorControl.clearSavedPos();
         resetState();
         if (mc.player != null && isContainerOpen()) {
             mc.player.closeHandledScreen();
@@ -357,6 +374,9 @@ public class KamiOrderBot extends Module {
     @EventHandler
     private void onTick(TickEvent.Pre event) {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
+
+        // Đồng bộ flag mixin: chặn center cursor khi module active + setting bật
+        GuiCursorControl.syncFromOrderModule(isActive(), disableGuiCursorCenter.get());
 
         if (actionCooldown > 0) {
             actionCooldown--;
@@ -403,6 +423,11 @@ public class KamiOrderBot extends Module {
             closeScreen();
             scheduleDelay();
             return;
+        }
+
+        // Lưu cursor trước khi server mở GUI order (tránh giật về giữa)
+        if (disableGuiCursorCenter.get()) {
+            GuiCursorControl.saveCursorBeforeGui();
         }
 
         // /order <tên người chơi> (hoặc tên item nếu player-name trống)
@@ -1497,7 +1522,10 @@ public class KamiOrderBot extends Module {
         return null;
     }
 
-    /** clickSlot qua MultiPlayerClient — không mô phỏng chuột. */
+    /**
+     * Click slot silent — chỉ packet clickSlot, không GLFW set cursor / mouse move.
+     * Dùng PICKUP hoặc QUICK_MOVE (shift-click) tùy {@code type}.
+     */
     private void clickSlot(int slotId, int button, SlotActionType type) {
         if (mc.player == null || mc.interactionManager == null) return;
         ScreenHandler menu = mc.player.currentScreenHandler;
