@@ -233,12 +233,12 @@ public class KamiOrderBot extends Module {
     );
 
     /**
-     * Tắt vanilla kéo chuột về giữa khi mở GUI order/confirm.
-     * Thao tác slot vẫn silent qua clickSlot — không bay chuột.
+     * Chỉ khi module RUNNING: bot mở GUI → restore cursor (không center).
+     * Module tắt → không can thiệp GUI server.
      */
     private final Setting<Boolean> disableGuiCursorCenter = sgGeneral.add(new BoolSetting.Builder()
         .name("disable-gui-cursor-center")
-        .description("Bật: không kéo cursor hệ thống về giữa màn hình khi mở GUI. Tắt: hành vi Minecraft mặc định.")
+        .description("Chỉ khi module đang bật: bot mở GUI thì restore chuột (giảm kéo giữa). Module tắt = GUI vanilla 100%.")
         .defaultValue(true)
         .build()
     );
@@ -353,8 +353,9 @@ public class KamiOrderBot extends Module {
 
     @Override
     public void onDeactivate() {
-        GuiCursorControl.syncFromOrderModule(false, disableGuiCursorCenter.get());
-        GuiCursorControl.clearSavedPos();
+        // Tắt module → trả control chuột ngay, hết can thiệp GUI
+        GuiCursorControl.syncFromOrderModule(false, false);
+        GuiCursorControl.clearAll();
         resetState();
         if (mc.player != null && isContainerOpen()) {
             mc.player.closeHandledScreen();
@@ -375,8 +376,11 @@ public class KamiOrderBot extends Module {
     private void onTick(TickEvent.Pre event) {
         if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
 
-        // Đồng bộ flag mixin: chặn center cursor khi module active + setting bật
+        // RUNNING + setting → mới cho phép restore cursor; tắt module = flag false
         GuiCursorControl.syncFromOrderModule(isActive(), disableGuiCursorCenter.get());
+        if (isActive() && disableGuiCursorCenter.get()) {
+            GuiCursorControl.tickTrackFreeCursor(); // nhớ vị trí lúc không lock FPS
+        }
 
         if (actionCooldown > 0) {
             actionCooldown--;
@@ -425,8 +429,8 @@ public class KamiOrderBot extends Module {
             return;
         }
 
-        // Lưu cursor trước khi server mở GUI order (tránh giật về giữa)
-        if (disableGuiCursorCenter.get()) {
+        // Chỉ khi RUNNING: đánh dấu restore 1 lần cho unlockCursor kế tiếp
+        if (isActive() && disableGuiCursorCenter.get()) {
             GuiCursorControl.saveCursorBeforeGui();
         }
 
