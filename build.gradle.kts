@@ -1,12 +1,22 @@
 plugins {
-    alias(libs.plugins.fabric.loom)
+    id("fabric-loom") version "1.14-SNAPSHOT"
+    java
 }
 
+val minecraftVersion = property("minecraft_version") as String
+val yarnMappings = property("yarn_mappings") as String
+val loaderVersion = property("loader_version") as String
+val meteorVersion = property("meteor_version") as String
+val archivesBaseName = property("archives_base_name") as String
+val modVersion = property("mod_version") as String
+val mavenGroup = property("maven_group") as String
+
 base {
-    archivesName = properties["archives_base_name"] as String
-    version = libs.versions.mod.version.get()
-    group = properties["maven_group"] as String
+    archivesName.set(archivesBaseName)
 }
+
+version = modVersion
+group = mavenGroup
 
 repositories {
     maven {
@@ -21,34 +31,28 @@ repositories {
 
 dependencies {
     // Fabric
-    minecraft(libs.minecraft)
-    implementation(libs.fabric.loader)
+    minecraft("com.mojang:minecraft:$minecraftVersion")
+    mappings("net.fabricmc:yarn:$yarnMappings:v2")
+    modImplementation("net.fabricmc:fabric-loader:$loaderVersion")
 
-    // Meteor
-    implementation(libs.meteor.client)
+    // Meteor Client
+    modImplementation("meteordevelopment:meteor-client:$meteorVersion")
 }
 
 java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(libs.versions.jdk.get().toInt()))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
-}
-
-fun toMinecraftCompat(version: String): String {
-    val match = Regex("""^(\d{2})\.([1-9]\d*)(?:\.([1-9]\d*))?$""")
-        .matchEntire(version)
-        ?: error("Invalid Minecraft version format: $version. Expected YY.D or YY.D.H")
-
-    val (year, drop, _) = match.destructured
-    return "~$year.$drop"
 }
 
 tasks {
     processResources {
         val propertyMap = mapOf(
             "version" to project.version,
-            "minecraft_version" to toMinecraftCompat(libs.versions.minecraft.get()),
-            "jdk_version" to libs.versions.jdk.get(),
+            "minecraft_version" to minecraftVersion,
+            "jdk_version" to "21",
         )
 
         inputs.properties(propertyMap)
@@ -57,20 +61,15 @@ tasks {
         }
     }
 
-    jar {
-        inputs.property("archivesName", project.base.archivesName.get())
-
-        from("LICENSE") {
-            rename { "${it}_${inputs.properties["archivesName"]}" }
-        }
+    withType<JavaCompile>().configureEach {
+        options.encoding = "UTF-8"
+        options.release.set(21)
+        options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Xlint:unchecked"))
     }
 
-    withType<JavaCompile>().configureEach {
-        options.compilerArgs.addAll(
-            listOf(
-                "-Xlint:deprecation",
-                "-Xlint:unchecked"
-            )
-        )
+    jar {
+        from("LICENSE") {
+            rename { "${it}_${base.archivesName.get()}" }
+        }
     }
 }
