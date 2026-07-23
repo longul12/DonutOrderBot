@@ -10,6 +10,6 @@ MC **1.21.11** · Java **21** · Package `com.kami.order`
 ./gradlew build
 ```
 
-JAR: `build/libs/kami-order-bot-0.3.3.jar`
+JAR: `build/libs/kami-order-bot-0.3.4.jar`
 
 Module: **Misc → Kami Order Bot**
