@@ -353,9 +353,9 @@ public class KamiOrderBot extends Module {
 
     @Override
     public void onDeactivate() {
-        // Tắt module → trả control chuột ngay, hết can thiệp GUI
+        // Tắt module → trả control chuột ngay (mixin no-op)
         GuiCursorControl.syncFromOrderModule(false, false);
-        GuiCursorControl.clearAll();
+        GuiCursorControl.clearAllHard();
         resetState();
         if (mc.player != null && isContainerOpen()) {
             mc.player.closeHandledScreen();

@@ -12,9 +12,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Nhẹ: <b>không</b> hủy vanilla {@link Mouse#unlockCursor()}.
- * Chỉ sau khi vanilla chạy xong (RETURN): nếu bot RUNNING + pending mở GUI
- * → restore vị trí chuột đã lưu. Module tắt → early return, GUI 100% vanilla.
+ * Khi bot RUNNING: thay {@link Mouse#unlockCursor()} — không gán giữa màn hình.
+ * Khi bot tắt: return ngay, vanilla chạy đủ 100%.
+ * <p>
+ * 1.21.11 vanilla: x=width/2, y=height/2 + glfwSetCursorPos → kéo về tâm.
  */
 @Mixin(Mouse.class)
 public abstract class MouseMixin {
@@ -24,35 +25,37 @@ public abstract class MouseMixin {
     private MinecraftClient client;
 
     @Shadow
+    private boolean cursorLocked;
+
+    @Shadow
     private double x;
 
     @Shadow
     private double y;
 
-    /**
-     * Vanilla đã center x/y rồi — ghi đè lại vị trí free nếu bot vừa mở container.
-     */
-    @Inject(method = "unlockCursor", at = @At("RETURN"))
-    private void kamiOrder$restoreCursorAfterUnlock(CallbackInfo ci) {
-        // Không RUNNING / không pending → tuyệt đối không đụng chuột
-        if (!GuiCursorControl.shouldRestoreOnUnlock()) return;
-        if (!GuiCursorControl.hasPendingRestore()) return; // peer sẽ tự restore
+    @Inject(method = "unlockCursor", at = @At("HEAD"), cancellable = true)
+    private void kamiOrder$unlockNoCenter(CallbackInfo ci) {
+        // Module tắt / setting tắt → không đụng gì
+        if (!GuiCursorControl.shouldInterceptUnlock()) return;
 
-        double rx = GuiCursorControl.consumeRestoreX(this.x);
-        double ry = GuiCursorControl.consumeRestoreY(this.y);
-        this.x = rx;
-        this.y = ry;
+        // Đã unlock: để vanilla return sớm — KHÔNG cancel (tránh phá GUI khác)
+        if (!this.cursorLocked) return;
 
-        try {
-            InputUtil.setCursorParameters(
-                this.client.getWindow(),
-                InputUtil.GLFW_CURSOR_NORMAL,
-                rx,
-                ry
-            );
-        } catch (Throwable ignored) {
-        }
+        // Unlock nhưng không center
+        this.cursorLocked = false;
 
-        GuiCursorControl.clearPendingAfterRestore();
+        double[] pos = GuiCursorControl.resolveUnlockPos(this.client);
+        this.x = pos[0];
+        this.y = pos[1];
+
+        // GLFW: hiện cursor tại pos, không phải tâm
+        InputUtil.setCursorParameters(
+            this.client.getWindow(),
+            InputUtil.GLFW_CURSOR_NORMAL,
+            this.x,
+            this.y
+        );
+
+        ci.cancel();
     }
 }
