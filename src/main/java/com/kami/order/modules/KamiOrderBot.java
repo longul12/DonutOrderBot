@@ -35,6 +35,45 @@ import java.util.regex.Pattern;
  * Score = PricePerItem × log(Remaining + 1). Confirm H2C8.
  */
 public class KamiOrderBot extends Module {
+    public static final String GUI_OWNER_NONE = "NONE";
+    public static final String GUI_OWNER_ORDER = "ORDER_BOT";
+    public static final String GUI_OWNER_SPAWNER = "SPAWNER_DROP";
+
+    private static String guiOwner = GUI_OWNER_NONE;
+    private static volatile boolean keepMouseFreeWhileRunning = false;
+
+    /** Lock GUI dùng chung giữa OrderBot và SpawnerDrop. Không phụ thuộc focus/cursor thật. */
+    public static synchronized boolean tryAcquireGuiOwner(String owner) {
+        if (owner == null || owner.isBlank()) return false;
+        if (GUI_OWNER_NONE.equals(guiOwner) || guiOwner.equals(owner)) {
+            guiOwner = owner;
+            return true;
+        }
+        return false;
+    }
+
+    public static synchronized boolean isGuiOwner(String owner) {
+        return owner != null && guiOwner.equals(owner);
+    }
+
+    public static synchronized void releaseGuiOwner(String owner) {
+        if (owner != null && guiOwner.equals(owner)) guiOwner = GUI_OWNER_NONE;
+    }
+
+    public static synchronized String currentGuiOwner() {
+        return guiOwner;
+    }
+
+    public static boolean shouldPreventMouseLock() {
+        if (keepMouseFreeWhileRunning) return true;
+        try {
+            Class<?> cl = Class.forName("com.kami.spawnersdrop.modules.KamiSpawnerDrop");
+            Object value = cl.getMethod("shouldPreventMouseLock").invoke(null);
+            return value instanceof Boolean b && b;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
 
     /** Cách chọn tên item gửi /order. */
     public enum TargetMode {
@@ -198,6 +237,16 @@ public class KamiOrderBot extends Module {
         .build()
     );
 
+    private final Setting<Integer> resumeItemWaitTimeout = sgGeneral.add(new IntSetting.Builder()
+        .name("resume-item-wait-timeout")
+        .description("Sau SpawnerDrop, chờ tối đa từng này tick để item vào inventory rồi mới gửi /order.")
+        .defaultValue(160)
+        .range(20, 600)
+        .sliderRange(20, 300)
+        .visible(autoSpawnerDrop::get)
+        .build()
+    );
+
     /**
      * GUI "đơn hàng - xác nhận giao hàng":
      * Hàng 2, Cột 8 (1-based) → slot = (2-1)*9 + (8-1) = <b>16</b>.
@@ -259,6 +308,9 @@ public class KamiOrderBot extends Module {
     private int orderRetry = 0;
     private boolean confirmClickedOk = false;
     private int scanEmptyRetries = 0;
+    private boolean resumeWaitingForItems = false;
+    private int resumeItemWaitTicks = 0;
+    private boolean resumeActivation = false;
 
     /** 27 stack × 64 = 1 shulker đầy */
     private static final int ITEMS_PER_FILL = 1728;
@@ -298,6 +350,13 @@ public class KamiOrderBot extends Module {
 
     @Override
     public void onActivate() {
+        if (!tryAcquireGuiOwner(GUI_OWNER_ORDER)) {
+            error("GUI đang được điều khiển bởi " + currentGuiOwner() + " — không bật OrderBot.");
+            toggle();
+            return;
+        }
+        keepMouseFreeWhileRunning = true;
+
         boolean resume = nextActivateIsResume;
         nextActivateIsResume = false;
 
@@ -308,6 +367,7 @@ public class KamiOrderBot extends Module {
         }
 
         resetState();
+        resumeActivation = resume;
 
         String cmdArg = getOrderCommandArg();
         String filter = getTargetItemFilterName();
@@ -340,9 +400,11 @@ public class KamiOrderBot extends Module {
     @Override
     public void onDeactivate() {
         resetState();
-        if (mc.player != null && isContainerOpen()) {
+        keepMouseFreeWhileRunning = false;
+        if (mc.player != null && isContainerOpen() && ownsGui()) {
             mc.player.closeHandledScreen();
         }
+        releaseGuiOwner(GUI_OWNER_ORDER);
     }
 
     private void resetState() {
@@ -353,11 +415,23 @@ public class KamiOrderBot extends Module {
         orderRetry = 0;
         confirmClickedOk = false;
         scanEmptyRetries = 0;
+        resumeWaitingForItems = false;
+        resumeItemWaitTicks = 0;
+        resumeActivation = false;
     }
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
+        if (mc.player == null || mc.world == null || mc.interactionManager == null) {
+            resetState();
+            keepMouseFreeWhileRunning = false;
+            releaseGuiOwner(GUI_OWNER_ORDER);
+            return;
+        }
+        if (!ownsGui()) {
+            if (state == State.DONE && isActive()) toggle();
+            return;
+        }
 
         if (actionCooldown > 0) {
             actionCooldown--;
@@ -396,9 +470,29 @@ public class KamiOrderBot extends Module {
         String filterName = getTargetItemFilterName();
         // Chỉ khi hết item order trong người mới chuyển Spawner (qua finishOutOfItems)
         if (!hasOrderItemsOnPlayer()) {
+            if (resumeActivation || resumeWaitingForItems) {
+                resumeWaitingForItems = true;
+                resumeItemWaitTicks++;
+                if (resumeItemWaitTicks <= resumeItemWaitTimeout.get()) {
+                    if (resumeItemWaitTicks == 1 || resumeItemWaitTicks % 40 == 0) {
+                        log("Resume sau Drop: chờ item " + filterName + " vào inventory ("
+                            + resumeItemWaitTicks + "/" + resumeItemWaitTimeout.get() + " tick).");
+                    }
+                    scheduleDelay();
+                    return;
+                }
+                error("Resume sau Drop nhưng vẫn chưa thấy " + filterName
+                    + " trong inventory — không gửi /order để tránh loop sai.");
+                state = State.DONE;
+                return;
+            }
             finishOutOfItems("Hết " + filterName + " trong túi.");
             return;
         }
+
+        resumeWaitingForItems = false;
+        resumeItemWaitTicks = 0;
+        resumeActivation = false;
 
         if (isContainerOpen()) {
             closeScreen();
@@ -1466,6 +1560,7 @@ public class KamiOrderBot extends Module {
             return;
         }
 
+        releaseGuiOwner(GUI_OWNER_ORDER);
         mod.toggle(); // bật
         if (mod.isActive()) {
             log("Đã tự bật " + mod.title
@@ -1504,9 +1599,15 @@ public class KamiOrderBot extends Module {
      */
     private void clickSlot(int slotId, int button, SlotActionType type) {
         if (mc.player == null || mc.interactionManager == null) return;
+        if (!isActive() || !ownsGui()) return;
         ScreenHandler menu = mc.player.currentScreenHandler;
         if (menu == null) return;
+        if (slotId < 0 || slotId >= menu.slots.size()) return;
         mc.interactionManager.clickSlot(menu.syncId, slotId, button, type, mc.player);
+    }
+
+    private boolean ownsGui() {
+        return isGuiOwner(GUI_OWNER_ORDER);
     }
 
     private boolean isContainerOpen() {
@@ -1516,7 +1617,7 @@ public class KamiOrderBot extends Module {
     }
 
     private void closeScreen() {
-        if (mc.player != null) mc.player.closeHandledScreen();
+        if (mc.player != null && ownsGui()) mc.player.closeHandledScreen();
     }
 
     private List<String> getAllTextLines(ItemStack stack) {

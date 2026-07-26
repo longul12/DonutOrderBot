@@ -17,6 +17,9 @@
       "com.kami.order.KamiOrderAddon"
     ]
   },
+  "mixins": [
+    "kami-order-bot.mixins.json"
+  ],
   "custom": {
     "meteor-client:color": "255,170,0",
     "modmenu": {
