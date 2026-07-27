@@ -1,6 +1,7 @@
 package com.kami.order;
 
 import com.kami.order.modules.KamiOrderBot;
+import com.kami.order.modules.KamiSpawnerProtect;
 import com.mojang.logging.LogUtils;
 import meteordevelopment.meteorclient.addons.GithubRepo;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
@@ -18,6 +19,7 @@ public class KamiOrderAddon extends MeteorAddon {
     public void onInitialize() {
         LOG.info("KamiOrderBot Addon initialized by kami");
         Modules.get().add(new KamiOrderBot());
+        Modules.get().add(new KamiSpawnerProtect());
     }
 
     @Override
