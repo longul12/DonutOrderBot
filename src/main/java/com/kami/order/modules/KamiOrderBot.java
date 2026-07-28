@@ -184,6 +184,8 @@ public class KamiOrderBot extends Module {
     public static volatile boolean resumeOrderAfterDrop = false;
     /** Lần bật Order tiếp theo là resume sau drop (không reset đếm vòng). */
     public static volatile boolean nextActivateIsResume = false;
+    /** SpawnerProtect yeu cau Order chay lan cuoi roi khong bat SpawnerDrop. */
+    public static volatile boolean suppressNextSpawnerDrop = false;
     /** Số phase order đã hoàn thành trong session hiện tại. */
     private static int cyclesCompleted = 0;
 
@@ -247,6 +249,42 @@ public class KamiOrderBot extends Module {
         .build()
     );
 
+    private final Setting<Boolean> scanNextPages = sgGeneral.add(new BoolSetting.Builder()
+        .name("scan-next-pages")
+        .description("Nếu trang Order hiện tại không có target item thì bấm next page để quét tiếp.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Integer> maxOrderPages = sgGeneral.add(new IntSetting.Builder()
+        .name("max-order-pages")
+        .description("Số trang Order tối đa sẽ quét trước khi dừng tìm target item.")
+        .defaultValue(5)
+        .range(1, 20)
+        .sliderRange(1, 10)
+        .visible(scanNextPages::get)
+        .build()
+    );
+
+    private final Setting<Integer> nextPageSlot = sgGeneral.add(new IntSetting.Builder()
+        .name("next-page-slot")
+        .description("Slot nút sang trang tiếp theo trong GUI Order. Mặc định 53.")
+        .defaultValue(53)
+        .range(0, 89)
+        .sliderRange(0, 60)
+        .visible(scanNextPages::get)
+        .build()
+    );
+
+    private final Setting<Integer> orderSearchRestarts = sgGeneral.add(new IntSetting.Builder()
+        .name("order-search-restarts")
+        .description("Không tìm được order phù hợp thì đóng GUI và gửi /order lại tối đa từng này lần.")
+        .defaultValue(3)
+        .range(0, 10)
+        .sliderRange(0, 5)
+        .build()
+    );
+
     /**
      * GUI "đơn hàng - xác nhận giao hàng":
      * Hàng 2, Cột 8 (1-based) → slot = (2-1)*9 + (8-1) = <b>16</b>.
@@ -298,6 +336,7 @@ public class KamiOrderBot extends Module {
         /** ESC sau khi bấm Xác nhận */
         ESC_AFTER_CONFIRM,
         AFTER_CONFIRM,
+        CLOSE_BEFORE_SPAWNER_DROP,
         DONE
     }
 
@@ -311,6 +350,10 @@ public class KamiOrderBot extends Module {
     private boolean resumeWaitingForItems = false;
     private int resumeItemWaitTicks = 0;
     private boolean resumeActivation = false;
+    private int pagesScanned = 0;
+    private int searchRestartsDone = 0;
+    private boolean pendingSpawnerDrop = false;
+    private int pendingSpawnerDropWaitTicks = 0;
 
     /** 27 stack × 64 = 1 shulker đầy */
     private static final int ITEMS_PER_FILL = 1728;
@@ -418,6 +461,10 @@ public class KamiOrderBot extends Module {
         resumeWaitingForItems = false;
         resumeItemWaitTicks = 0;
         resumeActivation = false;
+        pagesScanned = 0;
+        searchRestartsDone = 0;
+        pendingSpawnerDrop = false;
+        pendingSpawnerDropWaitTicks = 0;
     }
 
     @EventHandler
@@ -450,6 +497,7 @@ public class KamiOrderBot extends Module {
             case CONFIRM -> handleConfirm();
             case ESC_AFTER_CONFIRM -> handleEscAfterConfirm();
             case AFTER_CONFIRM -> handleAfterConfirm();
+            case CLOSE_BEFORE_SPAWNER_DROP -> handleCloseBeforeSpawnerDrop();
             case DONE -> {
                 // Message + spawner đã xử lý ở finishOutOfItems / finishDone
                 if (isActive()) toggle();
@@ -511,6 +559,7 @@ public class KamiOrderBot extends Module {
         waitTicks = 0;
         orderRetry++;
         scanEmptyRetries = 0;
+        pagesScanned = 0;
         state = State.WAIT_ORDER_LIST;
         scheduleDelay();
     }
@@ -543,6 +592,10 @@ public class KamiOrderBot extends Module {
 
         List<OrderEntry> orders = scanOrders();
         if (orders.isEmpty()) {
+            if (tryGoNextOrderPage()) {
+                return;
+            }
+
             scanEmptyRetries++;
             if (scanEmptyRetries < 8) {
                 if (scanEmptyRetries == 1 || scanEmptyRetries % 3 == 0) {
@@ -556,20 +609,26 @@ public class KamiOrderBot extends Module {
             }
             log("Không còn order phù hợp sau nhiều lần quét.");
             scanEmptyRetries = 0;
-            closeScreen();
-            state = State.DONE;
+            if (!restartOrderSearch("không thấy target/order phù hợp")) {
+                closeScreen();
+                state = State.DONE;
+            }
             return;
         }
 
         scanEmptyRetries = 0;
+        pagesScanned = 0;
         OrderEntry best = pickBestByScore(orders);
         if (best == null) {
             log("Có " + orders.size() + " order parse được nhưng bị lọc (price-min/max / min-remaining).");
-            closeScreen();
-            state = State.DONE;
+            if (!restartOrderSearch("order bị lọc hết bởi filter")) {
+                closeScreen();
+                state = State.DONE;
+            }
             return;
         }
 
+        searchRestartsDone = 0;
         // remainingNeeded = tổng - đã giao (đã tính trong entry.remaining)
         fillsLeft = Math.max(1, (int) Math.ceil(best.remaining / (double) ITEMS_PER_FILL));
 
@@ -774,6 +833,27 @@ public class KamiOrderBot extends Module {
     /**
      * Lọc order trong khoảng [price-min, price-max] rồi chọn theo mode.
      */
+    private void handleCloseBeforeSpawnerDrop() {
+        pendingSpawnerDropWaitTicks++;
+
+        if (isContainerOpen()) {
+            closeScreen();
+            if (pendingSpawnerDropWaitTicks == 1 || pendingSpawnerDropWaitTicks % 10 == 0) {
+                log("Dang dong GUI Order truoc khi bat SpawnerDrop...");
+            }
+            if (pendingSpawnerDropWaitTicks <= guiWaitTimeout.get()) {
+                scheduleDelay();
+                return;
+            }
+            warning("Timeout dong GUI Order - van thu bat SpawnerDrop.");
+        }
+
+        pendingSpawnerDrop = false;
+        pendingSpawnerDropWaitTicks = 0;
+        tryActivateSpawnerDrop();
+        state = State.DONE;
+    }
+
     private OrderEntry pickBestByScore(List<OrderEntry> orders) {
         List<OrderEntry> valid = filterValidOrders(orders);
         if (valid.isEmpty()) {
@@ -969,6 +1049,80 @@ public class KamiOrderBot extends Module {
         return result;
     }
 
+    private boolean tryGoNextOrderPage() {
+        if (!scanNextPages.get() || !isContainerOpen() || mc.player == null) return false;
+        if (pagesScanned >= Math.max(1, maxOrderPages.get()) - 1) return false;
+
+        int slot = resolveNextPageSlot();
+        if (slot < 0) return false;
+
+        pagesScanned++;
+        clickSlot(slot, 0, SlotActionType.PICKUP);
+        log("Không thấy target ở trang hiện tại — sang trang tiếp theo bằng slot "
+            + slot + " (" + (pagesScanned + 1) + "/" + maxOrderPages.get() + ").");
+
+        waitTicks = 0;
+        scanEmptyRetries = 0;
+        state = State.WAIT_ORDER_LIST;
+        scheduleDelay();
+        return true;
+    }
+
+    private boolean restartOrderSearch(String reason) {
+        int max = Math.max(0, orderSearchRestarts.get());
+        if (searchRestartsDone >= max) {
+            warning("Đã thử restart tìm order " + searchRestartsDone + "/" + max
+                + " lần nhưng vẫn lỗi: " + reason + ".");
+            return false;
+        }
+
+        searchRestartsDone++;
+        closeScreen();
+        waitTicks = 0;
+        orderRetry = 0;
+        scanEmptyRetries = 0;
+        pagesScanned = 0;
+        state = State.SEND_ORDER;
+        scheduleDelay();
+        warning("Restart tìm order lần " + searchRestartsDone + "/" + max
+            + " vì " + reason + " — sẽ gửi /order lại.");
+        return true;
+    }
+
+    private int resolveNextPageSlot() {
+        ScreenHandler menu = mc.player.currentScreenHandler;
+        if (menu == null) return -1;
+
+        int configured = nextPageSlot.get();
+        if (configured >= 0 && configured < menu.slots.size()) {
+            ItemStack stack = menu.slots.get(configured).getStack();
+            if (!stack.isEmpty() && (isNextPageButton(stack) || isArrowLike(stack))) return configured;
+        }
+
+        int containerSlots = Math.max(0, menu.slots.size() - 36);
+        for (int i = 0; i < containerSlots; i++) {
+            ItemStack stack = menu.slots.get(i).getStack();
+            if (!stack.isEmpty() && isNextPageButton(stack)) return i;
+        }
+        return -1;
+    }
+
+    private boolean isNextPageButton(ItemStack stack) {
+        String all = collectText(stack).toLowerCase(Locale.ROOT);
+        if (containsAny(all,
+            "next", "next page", "page next", "trang sau", "sang trang", "trang kế",
+            "trang tiep", "trang tiếp", "tiep theo", "tiếp theo", "forward", ">"
+        )) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isArrowLike(ItemStack stack) {
+        String id = Registries.ITEM.getId(stack.getItem()).getPath();
+        return id.equals("arrow") || id.equals("spectral_arrow");
+    }
+
     /**
      * So khớp item slot với Target Item:
      * - bỏ mã màu §/&amp;
@@ -979,27 +1133,39 @@ public class KamiOrderBot extends Module {
         if (wantNormalized == null || wantNormalized.isEmpty()) return true;
 
         String hover = normalizeItemName(stack.getName().getString());
-        if (namesMatch(hover, wantNormalized)) return true;
+        if (targetNameMatches(hover, wantNormalized)) return true;
 
         try {
             String vanilla = normalizeItemName(stack.getItem().getName().getString());
-            if (namesMatch(vanilla, wantNormalized)) return true;
+            if (targetNameMatches(vanilla, wantNormalized)) return true;
         } catch (Throwable ignored) {
         }
 
         String path = Registries.ITEM.getId(stack.getItem()).getPath().replace('_', ' ');
-        if (namesMatch(normalizeItemName(path), wantNormalized)) return true;
+        if (targetNameMatches(normalizeItemName(path), wantNormalized)) return true;
 
         // Item object từ setting list
         Item target = getDepositItem();
         if (target != null && target != Items.AIR && stack.isOf(target)) return true;
 
-        // Lore có chứa tên item
+        // Lore đôi khi ghi "item: Bone"; không dùng contains rộng để tránh Bone ăn nhầm Bone Block.
         for (String line : getAllTextLines(stack)) {
-            if (namesMatch(normalizeItemName(line), wantNormalized)) return true;
-            if (normalizeItemName(line).contains(wantNormalized)) return true;
+            if (loreLineMatchesTarget(normalizeItemName(line), wantNormalized)) return true;
         }
         return false;
+    }
+
+    private static boolean targetNameMatches(String actualNormalized, String wantNormalized) {
+        if (actualNormalized == null || wantNormalized == null) return false;
+        if (actualNormalized.isEmpty() || wantNormalized.isEmpty()) return false;
+        return actualNormalized.equals(wantNormalized);
+    }
+
+    private static boolean loreLineMatchesTarget(String lineNormalized, String wantNormalized) {
+        if (targetNameMatches(lineNormalized, wantNormalized)) return true;
+        return lineNormalized.endsWith(": " + wantNormalized)
+            || lineNormalized.endsWith("- " + wantNormalized)
+            || lineNormalized.endsWith("| " + wantNormalized);
     }
 
     private static boolean namesMatch(String a, String b) {
@@ -1491,7 +1657,9 @@ public class KamiOrderBot extends Module {
         cyclesCompleted++;
         int max = loopCount.get();
         // Còn vòng? 0 = vô hạn; còn thì sau drop sẽ bật lại Order
-        boolean moreCycles = autoSpawnerDrop.get() && (max <= 0 || cyclesCompleted < max);
+        boolean suppressDrop = suppressNextSpawnerDrop;
+        suppressNextSpawnerDrop = false;
+        boolean moreCycles = !suppressDrop && autoSpawnerDrop.get() && (max <= 0 || cyclesCompleted < max);
 
         resumeOrderAfterDrop = moreCycles;
 
@@ -1501,7 +1669,16 @@ public class KamiOrderBot extends Module {
                 ? (moreCycles ? " → Drop rồi Order lại." : " → Drop lần cuối, hết vòng.")
                 : " — dừng."));
 
-        tryActivateSpawnerDrop();
+        if (suppressDrop) {
+            log("SpawnerProtect yeu cau Order lan cuoi - KHONG bat SpawnerDrop.");
+        } else {
+            pendingSpawnerDrop = true;
+            pendingSpawnerDropWaitTicks = 0;
+            if (isContainerOpen()) closeScreen();
+            state = State.CLOSE_BEFORE_SPAWNER_DROP;
+            scheduleDelay();
+            return;
+        }
         state = State.DONE;
     }
 
@@ -1533,6 +1710,12 @@ public class KamiOrderBot extends Module {
      * Tên mặc định: {@code kami-spawner-drop}.
      */
     private void tryActivateSpawnerDrop() {
+        if (suppressNextSpawnerDrop) {
+            suppressNextSpawnerDrop = false;
+            resumeOrderAfterDrop = false;
+            log("SpawnerProtect dang cho Order lan cuoi - bo qua bat SpawnerDrop.");
+            return;
+        }
         if (!autoSpawnerDrop.get()) return;
 
         // Điều kiện bắt buộc: trong người không có item order

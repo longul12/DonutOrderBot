@@ -116,6 +116,23 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
+    private final Setting<Boolean> finalOrderBeforeBreak = sgGeneral.add(new BoolSetting.Builder()
+        .name("final-order-before-break")
+        .description("Khi co nguoi la: tat Drop, cho Order ban het do lan cuoi, chan Drop roi moi dap Spawner.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Integer> finalOrderTimeout = sgGeneral.add(new IntSetting.Builder()
+        .name("final-order-timeout")
+        .description("So tick toi da cho Order lan cuoi truoc khi Protect bao loi.")
+        .defaultValue(600)
+        .range(40, 2400)
+        .sliderRange(100, 1200)
+        .visible(finalOrderBeforeBreak::get)
+        .build()
+    );
+
     private final Setting<Boolean> dropLargestWhenFull = sgGeneral.add(new BoolSetting.Builder()
         .name("drop-largest-when-full")
         .description("Inventory day thi vut stack nhieu nhat, bo qua Spawner va Ender Chest.")
@@ -236,10 +253,14 @@ public class KamiSpawnerProtect extends Module {
     private int movedToolSourceSlotId = -1;
     private int movedToolHotbarSlot = -1;
     private int spawnerCountBeforeStore;
+    private int storeVerifyTicks;
+    private int storeRetryCount;
     private int spawnerCountBeforeBreak;
     private boolean pathingToSpawner;
     private int pathTicks;
     private boolean protectGuiOwnerAcquired;
+    private boolean finalOrderCompleted;
+    private int finalOrderWaitTicks;
 
     public KamiSpawnerProtect() {
         super(Categories.Misc, "kami-spawner-protect",
@@ -291,11 +312,15 @@ public class KamiSpawnerProtect extends Module {
         movedToolSourceSlotId = -1;
         movedToolHotbarSlot = -1;
         spawnerCountBeforeStore = 0;
+        storeVerifyTicks = 0;
+        storeRetryCount = 0;
         spawnerCountBeforeBreak = 0;
         sneakStarted = false;
         pathingToSpawner = false;
         pathTicks = 0;
         protectGuiOwnerAcquired = false;
+        finalOrderCompleted = false;
+        finalOrderWaitTicks = 0;
     }
 
     @EventHandler
@@ -314,6 +339,7 @@ public class KamiSpawnerProtect extends Module {
             case ARMED -> handleArmed();
             case SCAN_PLAYERS -> handleScanPlayers();
             case THREAT_CONFIRM -> handleThreatConfirm();
+            case WAIT_FINAL_ORDER -> handleWaitFinalOrder();
             case MOVE_TO_SPAWNER -> handleMoveToSpawner();
             case SWAP_PICKAXE -> handleSwapPickaxe();
             case START_SNEAK -> handleStartSneak();
@@ -384,6 +410,7 @@ public class KamiSpawnerProtect extends Module {
 
         PlayerEntity threat = findThreat();
         if (threat == null) {
+            KamiOrderBot.suppressNextSpawnerDrop = false;
             if (autoRunWithoutThreat.get()) {
                 if (!refreshTargetSpawner(true)) {
                     state = State.SCAN_PLAYERS;
@@ -410,10 +437,73 @@ public class KamiSpawnerProtect extends Module {
                 state = State.SCAN_PLAYERS;
                 return;
             }
+            if (shouldRunFinalOrderBeforeBreak()) {
+                beginFinalOrderCleanup();
+                return;
+            }
             if (!ensureProtectGuiOwner(true)) return;
             log("Xac nhan threat: " + threat.getName().getString() + " - cat Spawner " + targetSpawnerPos.toShortString() + ".");
             state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
         }
+    }
+
+    private void handleWaitFinalOrder() {
+        stopModuleByName("kami-spawner-drop");
+
+        Module order = getModuleByName("kami-order-bot");
+        if (order == null) {
+            warning("Khong tim thay KamiOrderBot de chay final order - Protect se tiep tuc neu lay duoc GUI.");
+            finalOrderCompleted = true;
+            state = State.THREAT_CONFIRM;
+            return;
+        }
+
+        if (!order.isActive()) {
+            KamiOrderBot.suppressNextSpawnerDrop = false;
+            cleanupStaleGuiAfterFinalOrder();
+            finalOrderCompleted = true;
+            finalOrderWaitTicks = 0;
+            log("Order lan cuoi da xong/khong con active - bat dau bao ve Spawner.");
+            state = State.THREAT_CONFIRM;
+            return;
+        }
+
+        finalOrderWaitTicks++;
+        if (finalOrderWaitTicks > finalOrderTimeout.get()) {
+            error("Timeout cho Order lan cuoi - khong dap Spawner de tranh mat do khi inventory con day.");
+            state = State.ERROR;
+        }
+    }
+
+    private boolean shouldRunFinalOrderBeforeBreak() {
+        return finalOrderBeforeBreak.get() && !finalOrderCompleted && findThreat() != null;
+    }
+
+    private void beginFinalOrderCleanup() {
+        releaseProtectGuiOwner();
+        stopModuleByName("kami-spawner-drop");
+        KamiOrderBot.suppressNextSpawnerDrop = true;
+        KamiOrderBot.resumeOrderAfterDrop = false;
+        KamiOrderBot.nextActivateIsResume = false;
+
+        Module order = getModuleByName("kami-order-bot");
+        if (order == null) {
+            warning("Khong tim thay KamiOrderBot de final order - bo qua buoc ban do.");
+            KamiOrderBot.suppressNextSpawnerDrop = false;
+            finalOrderCompleted = true;
+            state = State.THREAT_CONFIRM;
+            return;
+        }
+
+        if (!order.isActive()) {
+            order.toggle();
+            log("Threat confirmed - bat KamiOrderBot chay lan cuoi, Drop se bi chan.");
+        } else {
+            log("Threat confirmed - de KamiOrderBot chay not lan cuoi, Drop se bi chan.");
+        }
+
+        finalOrderWaitTicks = 0;
+        state = State.WAIT_FINAL_ORDER;
     }
 
     private void handleMoveToSpawner() {
@@ -665,6 +755,7 @@ public class KamiSpawnerProtect extends Module {
         }
 
         spawnerCountBeforeStore = countSpawnersInPlayerInventory();
+        storeVerifyTicks = 0;
         clickSlot(slot, 0, SlotActionType.QUICK_MOVE);
         log("Da QUICK_MOVE Spawner vao Ender Chest tu slot " + slot + ".");
         state = State.VERIFY_STORE;
@@ -679,7 +770,9 @@ public class KamiSpawnerProtect extends Module {
         }
 
         int now = countSpawnersInPlayerInventory();
+        storeVerifyTicks++;
         if (now < spawnerCountBeforeStore) {
+            storeRetryCount = 0;
             if (hasSpawnerInInventory()) {
                 log("Da cat 1 stack Spawner - tiep tuc cat cac stack Spawner con lai.");
                 state = State.STORE_SPAWNER;
@@ -694,10 +787,23 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
+        if (storeVerifyTicks < 6) {
+            scheduleDelay();
+            return;
+        }
+
         if (!hasSpawnerInInventory()) {
             closeScreen();
             log("Da cat het Spawner - dong GUI.");
             afterOneSpawnerCycle();
+            scheduleDelay();
+            return;
+        }
+
+        if (hasSpaceForSpawner() && storeRetryCount < 4) {
+            storeRetryCount++;
+            warning("QUICK_MOVE chua giam Spawner sau sync - thu lai lan " + storeRetryCount + "/4.");
+            state = State.STORE_SPAWNER;
             scheduleDelay();
             return;
         }
@@ -749,6 +855,9 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private void finish(String message) {
+        if (state == State.ERROR || state == State.COMPLETED) {
+            KamiOrderBot.suppressNextSpawnerDrop = false;
+        }
         if (State.ERROR.equals(state)) {
             restoreState();
             if (isContainerOpen() && ownsGui()) closeScreen();
@@ -760,17 +869,49 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private boolean ensureProtectGuiOwner(boolean stopPeersFirst) {
+        if (isContainerOpen()) {
+            cleanupStaleGuiBeforeProtect();
+            if (isContainerOpen()) {
+                log("Dang doi GUI Order/Drop dong han truoc khi Protect thao tac.");
+                return false;
+            }
+        }
         if (ownsGui()) {
             protectGuiOwnerAcquired = true;
             return true;
         }
         if (stopPeersFirst) stopOrderAndDropImmediately();
+        cleanupStaleGuiBeforeProtect();
+        if (isContainerOpen()) {
+            log("Dang doi GUI cu dong han truoc khi lay GUI owner.");
+            return false;
+        }
         if (KamiOrderBot.tryAcquireGuiOwner(GUI_OWNER_PROTECT)) {
             protectGuiOwnerAcquired = true;
             return true;
         }
         log("Dang cho GUI owner ranh (hien tai: " + KamiOrderBot.currentGuiOwner() + ").");
         return false;
+    }
+
+    private void cleanupStaleGuiBeforeProtect() {
+        Module order = getModuleByName("kami-order-bot");
+        Module drop = getModuleByName("kami-spawner-drop");
+        boolean orderActive = order != null && order.isActive();
+        boolean dropActive = drop != null && drop.isActive();
+
+        if (!orderActive) KamiOrderBot.releaseGuiOwner(KamiOrderBot.GUI_OWNER_ORDER);
+        if (!dropActive) KamiOrderBot.releaseGuiOwner(KamiOrderBot.GUI_OWNER_SPAWNER);
+
+        if (!orderActive && !dropActive && isContainerOpen() && mc.player != null) {
+            mc.player.closeHandledScreen();
+            log("Da dong GUI cu bi treo truoc khi Protect thao tac.");
+        }
+    }
+
+    private void cleanupStaleGuiAfterFinalOrder() {
+        cleanupStaleGuiBeforeProtect();
+        releaseProtectGuiOwner();
     }
 
     private void releaseProtectGuiOwner() {
@@ -934,12 +1075,20 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private void stopOrderAndDropImmediately() {
-        stopModuleByName("kami-order-bot");
         stopModuleByName("kami-spawner-drop");
+        if (!finalOrderBeforeBreak.get()) stopModuleByName("kami-order-bot");
     }
 
     private void stopModuleByName(String name) {
-        if (Modules.get() == null || name == null || name.isBlank()) return;
+        Module module = getModuleByName(name);
+        if (module != null && module != this && module.isActive()) {
+            module.toggle();
+            log("Threat detected - da tat ngay " + module.title + ".");
+        }
+    }
+
+    private Module getModuleByName(String name) {
+        if (Modules.get() == null || name == null || name.isBlank()) return null;
         Module module = null;
         try {
             module = Modules.get().get(name);
@@ -961,10 +1110,7 @@ public class KamiSpawnerProtect extends Module {
             }
         }
 
-        if (module != null && module != this && module.isActive()) {
-            module.toggle();
-            log("Threat detected - da tat ngay " + module.title + ".");
-        }
+        return module;
     }
 
     private boolean isWhitelisted(String name) {
@@ -1331,6 +1477,7 @@ public class KamiSpawnerProtect extends Module {
         ARMED,
         SCAN_PLAYERS,
         THREAT_CONFIRM,
+        WAIT_FINAL_ORDER,
         MOVE_TO_SPAWNER,
         SWAP_PICKAXE,
         START_SNEAK,
