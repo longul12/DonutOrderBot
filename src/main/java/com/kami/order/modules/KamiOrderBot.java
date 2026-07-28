@@ -311,6 +311,15 @@ public class KamiOrderBot extends Module {
         .build()
     );
 
+    private final Setting<Integer> postConfirmGuiWait = sgConfirm.add(new IntSetting.Builder()
+        .name("post-confirm-gui-wait")
+        .description("Sau confirm, chờ tối đa từng này tick để server mở lại GUI order rồi ESC thoát.")
+        .defaultValue(60)
+        .range(0, 200)
+        .sliderRange(0, 120)
+        .build()
+    );
+
     private final Setting<Boolean> chatFeedback = sgDebug.add(new BoolSetting.Builder()
         .name("chat-feedback")
         .description("In thông báo chi tiết ra chat.")
@@ -354,6 +363,7 @@ public class KamiOrderBot extends Module {
     private int searchRestartsDone = 0;
     private boolean pendingSpawnerDrop = false;
     private int pendingSpawnerDropWaitTicks = 0;
+    private boolean postConfirmReopenClosed = false;
 
     /** 27 stack × 64 = 1 shulker đầy */
     private static final int ITEMS_PER_FILL = 1728;
@@ -465,6 +475,7 @@ public class KamiOrderBot extends Module {
         searchRestartsDone = 0;
         pendingSpawnerDrop = false;
         pendingSpawnerDropWaitTicks = 0;
+        postConfirmReopenClosed = false;
     }
 
     @EventHandler
@@ -777,6 +788,7 @@ public class KamiOrderBot extends Module {
         if (slot >= 0) {
             clickSlot(slot, 0, SlotActionType.PICKUP);
             confirmClickedOk = true;
+            postConfirmReopenClosed = false;
             fillsLeft--;
             log("Đã click Xác nhận → slot " + slot + " — tiếp theo ESC.");
             waitTicks = 0;
@@ -798,13 +810,32 @@ public class KamiOrderBot extends Module {
             log("ESC sau Xác nhận.");
         }
         waitTicks = 0;
+        postConfirmReopenClosed = false;
         state = State.AFTER_CONFIRM;
         scheduleDelay();
     }
 
     private void handleAfterConfirm() {
         waitTicks++;
-        if (waitTicks < delay.get()) return;
+
+        // Sau confirm server có thể mở lại GUI chi tiết của chính order đó.
+        // GUI này có thể tới muộn do lag, nên chờ một cửa sổ timeout thay vì ESC đúng một nhịp.
+        if (isContainerOpen()) {
+            closeScreen();
+            postConfirmReopenClosed = true;
+            log("ESC thoát GUI order vừa mở lại sau confirm.");
+            waitTicks = 0;
+            scheduleDelay();
+            return;
+        }
+
+        if (!postConfirmReopenClosed && waitTicks < Math.max(delay.get(), postConfirmGuiWait.get())) {
+            return;
+        }
+
+        if (postConfirmReopenClosed && waitTicks < Math.max(2, delay.get() / 2)) {
+            return;
+        }
 
         // Chỉ bật Spawner khi trong người không còn vật phẩm order
         if (!hasOrderItemsOnPlayer()) {

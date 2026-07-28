@@ -45,6 +45,22 @@
 
 ## Not Started
 
+- Description: Validate the obfuscated JAR in a real Minecraft client.
+  Priority: High
+  Status: Not Started
+  Files: `build/libs/kami-order-bot-0.3.5-obfuscated.jar`
+  Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
+    mixin startup succeeds, settings load, and cross-addon reflection with
+    `KamiSpawnerDrop` still works.
+
+- Description: Tighten yGuard keep rules after runtime stability is proven.
+  Priority: Medium
+  Status: Not Started
+  Files: `build.gradle.kts`
+  Notes: Current keep rules intentionally preserve module class names and public
+    API members because Meteor settings/config and sibling-addon reflection rely
+    on stable names.
+
 - Description: Add automated tests for lore number parsing.
   Priority: Medium
   Status: Not Started

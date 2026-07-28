@@ -73,6 +73,30 @@ Expected JAR:
 build/libs/kami-order-bot-0.3.5.jar
 ```
 
+Release obfuscation is a separate rename-only yGuard step that runs after
+Fabric Loom `remapJar`:
+
+```powershell
+.\gradlew.bat obfuscateJar
+```
+
+Obfuscated JAR:
+
+```text
+build/libs/kami-order-bot-0.3.5-obfuscated.jar
+```
+
+yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
+private and versioned outside the public release artifact; do not commit or
+publish it. Do not enable shrink, string encryption, control-flow changes, or
+resource rewriting without fresh Minecraft startup testing.
+
+Current keep rules preserve the Fabric/Meteor entrypoint
+`com.kami.order.KamiOrderAddon`, mixin class
+`com.kami.order.mixin.MouseLockMixin`, and module package
+`com.kami.order.modules.**` class names with public API members for Meteor
+settings, event handlers, enum constants, and cross-addon reflection.
+
 ## Debugging
 
 - Enable `chat-feedback` in module settings for detailed chat logs.

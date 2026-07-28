@@ -77,6 +77,37 @@ Output JAR:
 build/libs/kami-order-bot-0.3.5.jar
 ```
 
+## Maintainer Release Build
+
+The normal Fabric Loom build remains unchanged for development and testing:
+
+```powershell
+.\gradlew.bat clean build
+```
+
+To create the release obfuscated JAR, run the separate yGuard task:
+
+```powershell
+.\gradlew.bat clean obfuscateJar
+```
+
+Artifacts:
+
+```text
+build/libs/kami-order-bot-0.3.5.jar
+build/libs/kami-order-bot-0.3.5-obfuscated.jar
+```
+
+yGuard mapping for crash-log reading is written locally to:
+
+```text
+build/yguard/yguard-map.xml
+```
+
+Do not publish or commit the mapping file. The current obfuscation is
+rename-only after Loom `remapJar`; shrink, string encryption, control-flow
+obfuscation, and resource rewriting are intentionally not enabled.
+
 ## Run
 
 Copy the built JAR into the Minecraft mods folder with Meteor Client and Fabric
