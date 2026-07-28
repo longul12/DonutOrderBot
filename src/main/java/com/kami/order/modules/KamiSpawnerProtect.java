@@ -1,6 +1,7 @@
 package com.kami.order.modules;
 
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.pathing.PathManagers;
 import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.DoubleSetting;
 import meteordevelopment.meteorclient.settings.EnumSetting;
@@ -12,6 +13,7 @@ import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.utils.Utils;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.meteorclient.utils.player.Rotations;
@@ -19,6 +21,7 @@ import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -83,10 +86,19 @@ public class KamiSpawnerProtect extends Module {
 
     private final Setting<Integer> protectRadius = sgGeneral.add(new IntSetting.Builder()
         .name("protect-radius")
-        .description("Ban kinh tim va pha tat ca Spawner gan target goc.")
+        .description("Ban kinh don/cat cac Spawner quanh target da chon.")
         .defaultValue(5)
         .range(1, 10)
         .sliderRange(1, 8)
+        .build()
+    );
+
+    private final Setting<Integer> locateRadius = sgGeneral.add(new IntSetting.Builder()
+        .name("locate-radius")
+        .description("Ban kinh dinh vi Spawner xa trong vung client da load, giong cach ESP thay block entity.")
+        .defaultValue(32)
+        .range(5, 128)
+        .sliderRange(5, 96)
         .build()
     );
 
@@ -97,10 +109,34 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
+    private final Setting<Boolean> autoRunWithoutThreat = sgGeneral.add(new BoolSetting.Builder()
+        .name("auto-run-without-threat")
+        .description("Tu dinh vi, di toi, dap va cat Spawner ma khong can nguoi la lai gan.")
+        .defaultValue(false)
+        .build()
+    );
+
     private final Setting<Boolean> dropLargestWhenFull = sgGeneral.add(new BoolSetting.Builder()
         .name("drop-largest-when-full")
         .description("Inventory day thi vut stack nhieu nhat, bo qua Spawner va Ender Chest.")
         .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Boolean> autoWalkToSpawner = sgGeneral.add(new BoolSetting.Builder()
+        .name("auto-walk-to-spawner")
+        .description("Cho phep dung Meteor/Baritone path manager de di toi Spawner ngoai tam interact.")
+        .defaultValue(false)
+        .build()
+    );
+
+    private final Setting<Integer> walkTimeout = sgGeneral.add(new IntSetting.Builder()
+        .name("walk-timeout")
+        .description("So tick toi da cho path manager di toi Spawner.")
+        .defaultValue(200)
+        .range(20, 1200)
+        .sliderRange(20, 400)
+        .visible(autoWalkToSpawner::get)
         .build()
     );
 
@@ -163,6 +199,16 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
+    private final Setting<Integer> placeSearchRadius = sgChest.add(new IntSetting.Builder()
+        .name("place-search-radius")
+        .description("Ban kinh quet vi tri dat Ender Chest quanh player khi cac o sat canh bi chan.")
+        .defaultValue(3)
+        .range(1, 6)
+        .sliderRange(1, 5)
+        .visible(placeEnderChestIfMissing::get)
+        .build()
+    );
+
     private final Setting<Boolean> chatFeedback = sgDebug.add(new BoolSetting.Builder()
         .name("chat-feedback")
         .description("In log trang thai ra chat.")
@@ -191,6 +237,9 @@ public class KamiSpawnerProtect extends Module {
     private int movedToolHotbarSlot = -1;
     private int spawnerCountBeforeStore;
     private int spawnerCountBeforeBreak;
+    private boolean pathingToSpawner;
+    private int pathTicks;
+    private boolean protectGuiOwnerAcquired;
 
     public KamiSpawnerProtect() {
         super(Categories.Misc, "kami-spawner-protect",
@@ -203,24 +252,20 @@ public class KamiSpawnerProtect extends Module {
 
     @Override
     public void onActivate() {
-        if (!KamiOrderBot.tryAcquireGuiOwner(GUI_OWNER_PROTECT)) {
-            error("GUI dang duoc dieu khien boi " + KamiOrderBot.currentGuiOwner() + " - khong bat SpawnerProtect.");
-            toggle();
-            return;
-        }
-
         resetRuntime();
         if (!captureSpawnerTarget()) {
-            error("Hay nhin dung vao block Spawner truoc khi bat KamiSpawnerProtect.");
-            KamiOrderBot.releaseGuiOwner(GUI_OWNER_PROTECT);
-            toggle();
-            return;
+            targetWorldKey = mc.world.getRegistryKey();
+            log("Chua co Spawner target khi bat - se tu dinh vi Spawner gan nhat khi co threat.");
         }
 
         originalSlot = mc.player.getInventory().getSelectedSlot();
         wasSneaking = mc.player.isSneaking();
         state = State.ARMED;
-        log("Da luu Spawner " + targetSpawnerPos.toShortString() + " - dang bao ve.");
+        if (targetSpawnerPos != null) {
+            log("Da luu Spawner " + targetSpawnerPos.toShortString() + " - dang bao ve.");
+        } else {
+            log("KamiSpawnerProtect dang canh gac - khong can nhin thang vao Spawner luc bat.");
+        }
     }
 
     @Override
@@ -229,7 +274,7 @@ public class KamiSpawnerProtect extends Module {
         if (mc.player != null && isContainerOpen() && ownsGui()) mc.player.closeHandledScreen();
         clearTarget();
         resetRuntime();
-        KamiOrderBot.releaseGuiOwner(GUI_OWNER_PROTECT);
+        releaseProtectGuiOwner();
     }
 
     private void resetRuntime() {
@@ -248,6 +293,9 @@ public class KamiSpawnerProtect extends Module {
         spawnerCountBeforeStore = 0;
         spawnerCountBeforeBreak = 0;
         sneakStarted = false;
+        pathingToSpawner = false;
+        pathTicks = 0;
+        protectGuiOwnerAcquired = false;
     }
 
     @EventHandler
@@ -256,8 +304,6 @@ public class KamiSpawnerProtect extends Module {
             state = State.ERROR;
             return;
         }
-        if (!ownsGui()) return;
-
         if (cooldown > 0) {
             cooldown--;
             return;
@@ -268,6 +314,7 @@ public class KamiSpawnerProtect extends Module {
             case ARMED -> handleArmed();
             case SCAN_PLAYERS -> handleScanPlayers();
             case THREAT_CONFIRM -> handleThreatConfirm();
+            case MOVE_TO_SPAWNER -> handleMoveToSpawner();
             case SWAP_PICKAXE -> handleSwapPickaxe();
             case START_SNEAK -> handleStartSneak();
             case ROTATE -> handleRotate();
@@ -299,7 +346,7 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private void handleScanPlayers() {
-        if (!isTargetStillValid(true)) {
+        if (targetSpawnerPos != null && !isTargetStillValid(true)) {
             state = State.ERROR;
             return;
         }
@@ -309,7 +356,18 @@ public class KamiSpawnerProtect extends Module {
         scanTicks = 0;
 
         PlayerEntity threat = findThreat();
-        if (threat == null) return;
+        if (threat == null) {
+            if (autoRunWithoutThreat.get()) {
+                if (!refreshTargetSpawner(true)) {
+                    log("Auto-run: chua tim thay Spawner trong locate-radius " + locateRadius.get() + " block.");
+                    return;
+                }
+                if (!ensureProtectGuiOwner(false)) return;
+                log("Auto-run: cat Spawner " + targetSpawnerPos.toShortString() + ".");
+                state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
+            }
+            return;
+        }
 
         stopOrderAndDropImmediately();
         confirmedThreat = threat;
@@ -319,13 +377,23 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private void handleThreatConfirm() {
-        if (!isTargetStillValid(true)) {
+        if (targetSpawnerPos != null && !isTargetStillValid(true)) {
             state = State.ERROR;
             return;
         }
 
         PlayerEntity threat = findThreat();
         if (threat == null) {
+            if (autoRunWithoutThreat.get()) {
+                if (!refreshTargetSpawner(true)) {
+                    state = State.SCAN_PLAYERS;
+                    return;
+                }
+                if (!ensureProtectGuiOwner(false)) return;
+                log("Auto-run tiep tuc: cat Spawner " + targetSpawnerPos.toShortString() + ".");
+                state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
+                return;
+            }
             confirmedThreat = null;
             threatTicks = 0;
             state = State.SCAN_PLAYERS;
@@ -338,12 +406,53 @@ public class KamiSpawnerProtect extends Module {
         threatTicks++;
         if (threatTicks >= confirmTicks.get()) {
             if (!refreshTargetSpawner(true)) {
-                warning("Co threat nhung khong con Spawner nao trong " + protectRadius.get() + " block.");
+                warning("Co threat nhung khong tim thay Spawner trong locate-radius " + locateRadius.get() + " block.");
                 state = State.SCAN_PLAYERS;
                 return;
             }
+            if (!ensureProtectGuiOwner(true)) return;
             log("Xac nhan threat: " + threat.getName().getString() + " - cat Spawner " + targetSpawnerPos.toShortString() + ".");
+            state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
+        }
+    }
+
+    private void handleMoveToSpawner() {
+        if (targetSpawnerPos == null || !isTargetStillValid(true)) {
+            state = State.ERROR;
+            return;
+        }
+
+        if (isTargetInInteractRange()) {
+            stopPathingToSpawner();
             state = State.SWAP_PICKAXE;
+            scheduleDelay();
+            return;
+        }
+
+        if (!autoWalkToSpawner.get()) {
+            error("Spawner ngoai tam interact va auto-walk-to-spawner dang tat.");
+            state = State.ERROR;
+            return;
+        }
+
+        if ("none".equalsIgnoreCase(PathManagers.get().getName())) {
+            error("Khong co Meteor path manager/Baritone de auto walk toi Spawner.");
+            state = State.ERROR;
+            return;
+        }
+
+        if (!pathingToSpawner) {
+            PathManagers.get().moveTo(targetSpawnerPos);
+            pathingToSpawner = true;
+            pathTicks = 0;
+            log("Dang auto-walk toi Spawner " + targetSpawnerPos.toShortString() + ".");
+        }
+
+        pathTicks++;
+        if (pathTicks > walkTimeout.get()) {
+            stopPathingToSpawner();
+            error("Timeout auto-walk toi Spawner - dung de tranh ket path.");
+            state = State.ERROR;
         }
     }
 
@@ -413,6 +522,12 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
+        if (!isTargetInInteractRange()) {
+            state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.ERROR;
+            if (state == State.ERROR) error("Spawner ngoai tam interact va auto-walk-to-spawner dang tat.");
+            return;
+        }
+
         BlockUtils.breakBlock(targetSpawnerPos, true);
     }
 
@@ -470,12 +585,15 @@ public class KamiSpawnerProtect extends Module {
 
         FindItemResult hotbarChest = InvUtils.findInHotbar(Items.ENDER_CHEST);
         if (!hotbarChest.found()) {
-            if (!moveEnderChestToSelectedHotbar()) {
+            int movedSlot = moveEnderChestToHotbar();
+            if (movedSlot < 0) {
                 error("Khong the dua Ender Chest len hotbar - giu Spawner trong inventory.");
                 state = State.ERROR;
                 return;
             }
-            hotbarChest = new FindItemResult(mc.player.getInventory().getSelectedSlot(), 1);
+            log("Da gui swap Ender Chest len hotbar slot " + movedSlot + " - cho sync roi dat.");
+            scheduleDelay();
+            return;
         }
 
         if (!BlockUtils.place(placePos, hotbarChest, rotate.get(), 50, true, true, false)) {
@@ -561,21 +679,37 @@ public class KamiSpawnerProtect extends Module {
         }
 
         int now = countSpawnersInPlayerInventory();
-        if (now < spawnerCountBeforeStore || !hasSpawnerInInventory()) {
+        if (now < spawnerCountBeforeStore) {
+            if (hasSpawnerInInventory()) {
+                log("Da cat 1 stack Spawner - tiep tuc cat cac stack Spawner con lai.");
+                state = State.STORE_SPAWNER;
+                scheduleDelay();
+                return;
+            }
+
             closeScreen();
-            log("Xac minh cat Spawner thanh cong - dong GUI.");
+            log("Da cat het tat ca stack Spawner - dong GUI.");
             afterOneSpawnerCycle();
             scheduleDelay();
             return;
         }
 
-        error("Spawner van con trong inventory sau QUICK_MOVE - co the Ender Chest day.");
+        if (!hasSpawnerInInventory()) {
+            closeScreen();
+            log("Da cat het Spawner - dong GUI.");
+            afterOneSpawnerCycle();
+            scheduleDelay();
+            return;
+        }
+
+        error("Spawner van con trong inventory sau QUICK_MOVE - co the Ender Chest day hoac stack khong the gop.");
         state = State.ERROR;
     }
 
     private void handleRestoreState() {
         restoreState();
         state = keepRunning.get() ? State.ARMED : State.COMPLETED;
+        if (state != State.COMPLETED) releaseProtectGuiOwner();
         scheduleDelay();
     }
 
@@ -586,9 +720,14 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        if (refreshTargetSpawner(false) && findThreat() != null) {
-            state = State.SWAP_PICKAXE;
+        if (refreshTargetSpawner(false) && (autoRunWithoutThreat.get() || findThreat() != null)) {
+            if (!ensureProtectGuiOwner(findThreat() != null)) {
+                state = State.SCAN_PLAYERS;
+                return;
+            }
+            state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
         } else {
+            releaseProtectGuiOwner();
             confirmedThreat = null;
             threatTicks = 0;
             state = State.SCAN_PLAYERS;
@@ -597,6 +736,7 @@ public class KamiSpawnerProtect extends Module {
 
     private void restoreState() {
         if (mc.player == null || mc.interactionManager == null) return;
+        stopPathingToSpawner();
         stopTemporarySneak();
         restoreMovedTool();
         restoreMovedEnderChest();
@@ -619,6 +759,46 @@ public class KamiSpawnerProtect extends Module {
         if (isActive()) toggle();
     }
 
+    private boolean ensureProtectGuiOwner(boolean stopPeersFirst) {
+        if (ownsGui()) {
+            protectGuiOwnerAcquired = true;
+            return true;
+        }
+        if (stopPeersFirst) stopOrderAndDropImmediately();
+        if (KamiOrderBot.tryAcquireGuiOwner(GUI_OWNER_PROTECT)) {
+            protectGuiOwnerAcquired = true;
+            return true;
+        }
+        log("Dang cho GUI owner ranh (hien tai: " + KamiOrderBot.currentGuiOwner() + ").");
+        return false;
+    }
+
+    private void releaseProtectGuiOwner() {
+        if (!protectGuiOwnerAcquired && !ownsGui()) return;
+        KamiOrderBot.releaseGuiOwner(GUI_OWNER_PROTECT);
+        protectGuiOwnerAcquired = false;
+    }
+
+    private boolean shouldWalkToTarget() {
+        return autoWalkToSpawner.get() && targetSpawnerPos != null && !isTargetInInteractRange();
+    }
+
+    private boolean isTargetInInteractRange() {
+        return mc.player != null
+            && targetSpawnerPos != null
+            && mc.player.squaredDistanceTo(Vec3d.ofCenter(targetSpawnerPos)) <= MAX_INTERACT_RANGE_SQ;
+    }
+
+    private void stopPathingToSpawner() {
+        if (!pathingToSpawner) return;
+        try {
+            PathManagers.get().stop();
+        } catch (Throwable ignored) {
+        }
+        pathingToSpawner = false;
+        pathTicks = 0;
+    }
+
     private boolean captureSpawnerTarget() {
         if (mc.player == null || mc.world == null) return false;
         HitResult hit = mc.crosshairTarget;
@@ -639,11 +819,11 @@ public class KamiSpawnerProtect extends Module {
     private boolean refreshTargetSpawner(boolean preferNearestToPlayer) {
         if (mc.player == null || mc.world == null) return false;
         BlockPos anchor = targetSpawnerPos == null ? mc.player.getBlockPos() : targetSpawnerPos;
-        int radius = protectRadius.get();
+        int radius = targetSpawnerPos == null ? locateRadius.get() : protectRadius.get();
 
         BlockPos found = findSpawnerAround(anchor, radius, preferNearestToPlayer);
         if (found == null && !anchor.equals(mc.player.getBlockPos())) {
-            found = findSpawnerAround(mc.player.getBlockPos(), radius, true);
+            found = findSpawnerAround(mc.player.getBlockPos(), locateRadius.get(), true);
         }
         if (found == null) return false;
 
@@ -657,23 +837,44 @@ public class KamiSpawnerProtect extends Module {
     private BlockPos findSpawnerAround(BlockPos anchor, int radius, boolean preferNearestToPlayer) {
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
+        double radiusSq = (radius + 0.5) * (radius + 0.5);
 
         HitResult hit = mc.crosshairTarget;
         if (hit instanceof BlockHitResult bhr
             && hit.getType() == HitResult.Type.BLOCK
             && mc.world.getBlockState(bhr.getBlockPos()).isOf(Blocks.SPAWNER)
             && bhr.getBlockPos().isWithinDistance(Vec3d.ofCenter(anchor), radius + 0.5)
-            && mc.player.squaredDistanceTo(Vec3d.ofCenter(bhr.getBlockPos())) <= MAX_INTERACT_RANGE_SQ) {
+            && (autoWalkToSpawner.get() || mc.player.squaredDistanceTo(Vec3d.ofCenter(bhr.getBlockPos())) <= MAX_INTERACT_RANGE_SQ)) {
             return bhr.getBlockPos().toImmutable();
         }
 
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
-                for (int z = -radius; z <= radius; z++) {
+        // Giong ESP: Spawner co block entity, nen uu tien duyet block entities loaded thay vi chi quet 5 block.
+        for (BlockEntity blockEntity : Utils.blockEntities()) {
+            if (blockEntity == null) continue;
+            BlockPos pos = blockEntity.getPos();
+            if (pos == null || !mc.world.getBlockState(pos).isOf(Blocks.SPAWNER)) continue;
+            if (pos.getSquaredDistance(anchor) > radiusSq) continue;
+            if (!autoWalkToSpawner.get() && mc.player.squaredDistanceTo(Vec3d.ofCenter(pos)) > MAX_INTERACT_RANGE_SQ) continue;
+
+            double dist = preferNearestToPlayer
+                ? mc.player.squaredDistanceTo(Vec3d.ofCenter(pos))
+                : pos.getSquaredDistance(anchor);
+            if (dist < bestDistance) {
+                best = pos.toImmutable();
+                bestDistance = dist;
+            }
+        }
+        if (best != null) return best;
+
+        int blockScanRadius = Math.min(radius, 16);
+        double blockScanRadiusSq = (blockScanRadius + 0.5) * (blockScanRadius + 0.5);
+        for (int x = -blockScanRadius; x <= blockScanRadius; x++) {
+            for (int y = -blockScanRadius; y <= blockScanRadius; y++) {
+                for (int z = -blockScanRadius; z <= blockScanRadius; z++) {
                     BlockPos pos = anchor.add(x, y, z);
-                    if (!pos.isWithinDistance(Vec3d.ofCenter(anchor), radius + 0.5)) continue;
+                    if (pos.getSquaredDistance(anchor) > blockScanRadiusSq) continue;
                     if (!mc.world.getBlockState(pos).isOf(Blocks.SPAWNER)) continue;
-                    if (mc.player.squaredDistanceTo(Vec3d.ofCenter(pos)) > MAX_INTERACT_RANGE_SQ) continue;
+                    if (!autoWalkToSpawner.get() && mc.player.squaredDistanceTo(Vec3d.ofCenter(pos)) > MAX_INTERACT_RANGE_SQ) continue;
 
                     double dist = preferNearestToPlayer
                         ? mc.player.squaredDistanceTo(Vec3d.ofCenter(pos))
@@ -702,6 +903,7 @@ public class KamiSpawnerProtect extends Module {
             return refreshTargetSpawner(false);
         }
         if (mc.player.squaredDistanceTo(Vec3d.ofCenter(targetSpawnerPos)) > MAX_INTERACT_RANGE_SQ) {
+            if (autoWalkToSpawner.get()) return true;
             if (notify) error("Player qua xa Spawner da luu - khong tu di bo/pathfind.");
             return false;
         }
@@ -709,9 +911,9 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private PlayerEntity findThreat() {
-        if (mc.world == null || mc.player == null || targetSpawnerPos == null) return null;
+        if (mc.world == null || mc.player == null) return null;
         double rangeSq = detectionRange.get() * detectionRange.get();
-        Vec3d center = Vec3d.ofCenter(targetSpawnerPos);
+        Vec3d center = targetSpawnerPos == null ? mc.player.getEntityPos() : Vec3d.ofCenter(targetSpawnerPos);
 
         PlayerEntity nearest = null;
         double nearestDistance = Double.MAX_VALUE;
@@ -932,22 +1134,32 @@ public class KamiSpawnerProtect extends Module {
     private BlockPos findPlacePosNearPlayer() {
         if (mc.player == null || mc.world == null) return null;
         BlockPos base = mc.player.getBlockPos();
-        BlockPos[] candidates = {
-            base.offset(mc.player.getHorizontalFacing()),
-            base.offset(mc.player.getHorizontalFacing().rotateYClockwise()),
-            base.offset(mc.player.getHorizontalFacing().rotateYCounterclockwise()),
-            base.offset(mc.player.getHorizontalFacing().getOpposite()),
-            base.up()
-        };
+        int radius = placeSearchRadius.get();
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        double radiusSq = (radius + 0.5) * (radius + 0.5);
 
-        for (BlockPos pos : candidates) {
-            if (BlockUtils.canPlace(pos, true)) return pos.toImmutable();
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -1; y <= 2; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    BlockPos pos = base.add(x, y, z);
+                    double playerDist = mc.player.squaredDistanceTo(Vec3d.ofCenter(pos));
+                    if (pos.getSquaredDistance(base) > radiusSq) continue;
+                    if (playerDist > MAX_INTERACT_RANGE_SQ) continue;
+                    if (!BlockUtils.canPlace(pos, true)) continue;
+
+                    if (playerDist < bestDistance) {
+                        best = pos.toImmutable();
+                        bestDistance = playerDist;
+                    }
+                }
+            }
         }
-        return null;
+        return best;
     }
 
-    private boolean moveEnderChestToSelectedHotbar() {
-        if (mc.player == null || mc.interactionManager == null) return false;
+    private int moveEnderChestToHotbar() {
+        if (mc.player == null || mc.interactionManager == null) return -1;
         int sourceInvIndex = -1;
         for (int i = 9; i < 36; i++) {
             ItemStack stack = mc.player.getInventory().getStack(i);
@@ -956,19 +1168,33 @@ public class KamiSpawnerProtect extends Module {
                 break;
             }
         }
-        if (sourceInvIndex < 0) return false;
+        if (sourceInvIndex < 0) return -1;
 
         movedEnderChestSourceSlotId = inventoryIndexToPlayerSlotId(sourceInvIndex);
-        int selected = mc.player.getInventory().getSelectedSlot();
-        movedEnderChestHotbarSlot = selected;
+        int hotbarSlot = findEnderChestHotbarTarget();
+        movedEnderChestHotbarSlot = hotbarSlot;
         mc.interactionManager.clickSlot(
-            mc.player.playerScreenHandler.syncId,
+            mc.player.currentScreenHandler.syncId,
             movedEnderChestSourceSlotId,
-            selected,
+            hotbarSlot,
             SlotActionType.SWAP,
             mc.player
         );
-        return mc.player.getInventory().getStack(selected).isOf(Items.ENDER_CHEST);
+        return hotbarSlot;
+    }
+
+    private int findEnderChestHotbarTarget() {
+        int selected = mc.player.getInventory().getSelectedSlot();
+        for (int i = 0; i < 9; i++) {
+            if (mc.player.getInventory().getStack(i).isEmpty()) return i;
+        }
+        ItemStack selectedStack = mc.player.getInventory().getStack(selected);
+        if (!selectedStack.isOf(Items.SPAWNER) && !selectedStack.isOf(Items.ENDER_CHEST)) return selected;
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (!stack.isOf(Items.SPAWNER) && !stack.isOf(Items.ENDER_CHEST) && !isPickaxe(stack)) return i;
+        }
+        return selected;
     }
 
     private void restoreMovedEnderChest() {
@@ -1083,6 +1309,7 @@ public class KamiSpawnerProtect extends Module {
         return switch (state) {
             case ARMED, SCAN_PLAYERS -> targetSpawnerPos == null ? "armed" : targetSpawnerPos.toShortString();
             case THREAT_CONFIRM -> confirmedThreat == null ? "confirm" : confirmedThreat.getName().getString();
+            case MOVE_TO_SPAWNER -> "walk";
             case BREAK_SPAWNER -> "breaking";
             case WAIT_PICKUP -> "pickup";
             case FIND_ENDER_CHEST -> "find echest";
@@ -1104,6 +1331,7 @@ public class KamiSpawnerProtect extends Module {
         ARMED,
         SCAN_PLAYERS,
         THREAT_CONFIRM,
+        MOVE_TO_SPAWNER,
         SWAP_PICKAXE,
         START_SNEAK,
         ROTATE,
