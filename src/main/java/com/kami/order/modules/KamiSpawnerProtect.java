@@ -31,6 +31,7 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -106,6 +107,13 @@ public class KamiSpawnerProtect extends Module {
         .name("keep-running")
         .description("Cat xong mot Spawner thi tiep tuc tim Spawner ke tiep thay vi tu tat.")
         .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Boolean> disconnectAfterClear = sgGeneral.add(new BoolSetting.Builder()
+        .name("disconnect-after-clear")
+        .description("Sau khi cat het Spawner quanh khu vuc va khong con target ke tiep thi tu dong out khoi server.")
+        .defaultValue(false)
         .build()
     );
 
@@ -822,6 +830,10 @@ public class KamiSpawnerProtect extends Module {
     private void afterOneSpawnerCycle() {
         restoreState();
         if (!keepRunning.get()) {
+            if (disconnectAfterClear.get()) {
+                disconnectAfterSpawnerClear();
+                return;
+            }
             state = State.COMPLETED;
             return;
         }
@@ -836,8 +848,25 @@ public class KamiSpawnerProtect extends Module {
             releaseProtectGuiOwner();
             confirmedThreat = null;
             threatTicks = 0;
+            if (disconnectAfterClear.get()) {
+                disconnectAfterSpawnerClear();
+                return;
+            }
             state = State.SCAN_PLAYERS;
         }
+    }
+
+    private void disconnectAfterSpawnerClear() {
+        releaseProtectGuiOwner();
+        if (mc.player != null && isContainerOpen()) mc.player.closeHandledScreen();
+        log("Da cat het Spawner quanh khu vuc - disconnect khoi server de dam bao an toan.");
+        try {
+            mc.disconnect(Text.literal("KamiSpawnerProtect: Spawner secured"));
+        } catch (Throwable t) {
+            warning("Khong disconnect duoc: " + t.getMessage());
+        }
+        state = State.COMPLETED;
+        if (isActive()) toggle();
     }
 
     private void restoreState() {
