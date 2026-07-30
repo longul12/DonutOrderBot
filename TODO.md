@@ -35,23 +35,34 @@
   Notes: Handles resume activation and avoids staying stuck active after
     ownership handoff.
 
+- Description: Merge SpawnerDrop into the OrderBot addon JAR.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/KamiOrderAddon.java`,
+    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`,
+    `build.gradle.kts`, `gradle.properties`, `src/main/resources/fabric.mod.json`
+  Notes: `KamiOrderAddon` now registers OrderBot, SpawnerDrop, and
+    SpawnerProtect. Version bumped to `0.4.0`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
   Priority: High
   Status: In Progress
-  Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`
-  Notes: Build is verified, but server GUI behavior must be validated manually.
+  Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
+    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`
+  Notes: Build is verified, but server GUI behavior and the unified JAR must be
+    validated manually in Minecraft.
 
 ## Not Started
 
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.3.5-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.4.0-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
-    mixin startup succeeds, settings load, and cross-addon reflection with
-    `KamiSpawnerDrop` still works.
+    mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
+    reflection still works.
 
 - Description: Tighten yGuard keep rules after runtime stability is proven.
   Priority: Medium
@@ -83,5 +94,5 @@
   Priority: Low
   Status: Not Started
   Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
-    sibling `KamiSpawnerDrop`
-  Notes: Current reflection approach avoids adding a dependency between jars.
+    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`
+  Notes: Current reflection approach still works inside the unified JAR.

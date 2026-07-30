@@ -3,7 +3,7 @@
   "id": "kami-order-bot",
   "version": "${version}",
   "name": "KamiOrderBot",
-  "description": "Meteor Addon by kami: Auto Order SMP (shift-double-click fill).",
+  "description": "Meteor Addon by kami: Auto Order SMP and Spawner Drop automation.",
   "authors": [
     "kami"
   ],

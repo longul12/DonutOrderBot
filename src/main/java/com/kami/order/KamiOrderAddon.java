@@ -2,6 +2,7 @@ package com.kami.order;
 
 import com.kami.order.modules.KamiOrderBot;
 import com.kami.order.modules.KamiSpawnerProtect;
+import com.kami.spawnersdrop.modules.KamiSpawnerDrop;
 import com.mojang.logging.LogUtils;
 import meteordevelopment.meteorclient.addons.GithubRepo;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
@@ -9,7 +10,7 @@ import meteordevelopment.meteorclient.systems.modules.Modules;
 import org.slf4j.Logger;
 
 /**
- * Entrypoint — KamiOrderBot (Auto Order).
+ * Entrypoint — KamiOrderBot unified addon.
  * Author: kami · MC 1.21.11 / Java 21 / Meteor 1.21.11
  */
 public class KamiOrderAddon extends MeteorAddon {
@@ -19,6 +20,7 @@ public class KamiOrderAddon extends MeteorAddon {
     public void onInitialize() {
         LOG.info("KamiOrderBot Addon initialized by kami");
         Modules.get().add(new KamiOrderBot());
+        Modules.get().add(new KamiSpawnerDrop());
         Modules.get().add(new KamiSpawnerProtect());
     }
 

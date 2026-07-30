@@ -8,13 +8,13 @@ as the client continues ticking.
 
 ## Overall Architecture
 
-This is a single-module Meteor addon repository. `KamiOrderAddon` registers
-`KamiOrderBot` into `Categories.Misc`. The module is a tick-driven state machine
-that sends `/order`, reads container slots, parses lore, moves items with
-`clickSlot`, and confirms delivery.
+This is a unified Meteor addon repository. `KamiOrderAddon` registers
+`KamiOrderBot`, `KamiSpawnerDrop`, and `KamiSpawnerProtect` into
+`Categories.Misc`. `KamiOrderBot` and `KamiSpawnerDrop` are tick-driven state
+machines that interact with Minecraft GUIs through `ScreenHandler` slot clicks.
 
-`KamiOrderBot` also exposes static GUI ownership helpers used by
-`KamiSpawnerDrop` through reflection:
+`KamiOrderBot` exposes static GUI ownership helpers used by `KamiSpawnerDrop`
+through reflection:
 
 - `tryAcquireGuiOwner`
 - `isGuiOwner`
@@ -25,13 +25,15 @@ that sends `/order`, reads container slots, parses lore, moves items with
 ## Module List
 
 - `kami-order-bot`: Main order automation module.
-- Cross-addon peer: `kami-spawner-drop` from the sibling `KamiSpawnerDrop`
-  repository.
+- `kami-spawner-drop`: Spawner GUI drop/sell automation module, now copied into
+  this repository under `com.kami.spawnersdrop.modules`.
+- `kami-spawner-protect`: Existing spawner protection module registered by the
+  same addon entrypoint.
 
 ## Coding Rules
 
-- Keep changes scoped to the current module unless the cross-addon contract
-  requires coordinated edits.
+- Keep changes scoped to the current module unless the OrderBot/SpawnerDrop
+  handoff contract requires coordinated edits.
 - Preserve the tick state machine style; do not introduce blocking loops.
 - Interact with Minecraft client state only on the client tick thread.
 - Prefer existing helper methods in `KamiOrderBot` over new abstractions.
@@ -70,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.3.5.jar
+build/libs/kami-order-bot-0.4.0.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -83,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.3.5-obfuscated.jar
+build/libs/kami-order-bot-0.4.0-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -93,9 +95,9 @@ resource rewriting without fresh Minecraft startup testing.
 
 Current keep rules preserve the Fabric/Meteor entrypoint
 `com.kami.order.KamiOrderAddon`, mixin class
-`com.kami.order.mixin.MouseLockMixin`, and module package
-`com.kami.order.modules.**` class names with public API members for Meteor
-settings, event handlers, enum constants, and cross-addon reflection.
+`com.kami.order.mixin.MouseLockMixin`, and module packages
+`com.kami.order.modules.**` and `com.kami.spawnersdrop.modules.**` with public
+API members for Meteor settings, event handlers, enum constants, and reflection.
 
 ## Debugging
 
@@ -110,17 +112,21 @@ settings, event handlers, enum constants, and cross-addon reflection.
 
 ## Naming Conventions
 
-- Package: `com.kami.order`
+- Addon package: `com.kami.order`
+- SpawnerDrop package: `com.kami.spawnersdrop.modules`
 - Module name: `kami-order-bot`
 - Addon id: `kami-order-bot`
 - Main class: `KamiOrderAddon`
-- Module class: `KamiOrderBot`
+- Module classes: `KamiOrderBot`, `KamiSpawnerDrop`, `KamiSpawnerProtect`
 - Mixin class: `MouseLockMixin`
 
 ## Notes for Future Development
 
-- `KamiSpawnerDrop` may restart this module if it is stuck active after handing
-  off ownership. Preserve this behavior unless replacing the whole handoff model.
+- `KamiSpawnerDrop` may restart `KamiOrderBot` if Order is stuck active after
+  handing off ownership. Preserve this behavior unless replacing the whole
+  handoff model.
+- Do not install the old standalone SpawnerDrop JAR beside this unified addon;
+  that can create duplicate module registration.
 - `MouseLockMixin` only cancels `Mouse.lockCursor` while a bot is running; it must
   remain free of cursor positioning calls.
 - Fabric metadata uses Gradle resource expansion for `${version}`.

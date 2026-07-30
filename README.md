@@ -5,14 +5,15 @@ Meteor Client addon for automating the Donut SMP order GUI.
 ## Overview
 
 `KamiOrderBot` is a Fabric/Meteor Client addon for Minecraft `1.21.11`.
-It registers one Meteor module in `Categories.Misc`: `kami-order-bot`.
+It registers multiple Meteor modules in `Categories.Misc`, including
+`kami-order-bot`, `kami-spawner-drop`, and `kami-spawner-protect`.
 
 The module sends `/order`, scans the opened order container, parses item
 names/lore for price and delivery progress, chooses a suitable order, moves
 matching inventory items into the order with `clickSlot`, and confirms delivery.
 
-This repository is separate from `KamiSpawnerDrop`, but the two addons cooperate
-through Meteor's `Modules` registry and static/reflection-based flags.
+`KamiSpawnerDrop` is now included in this addon JAR. Keep only the unified JAR in
+the Minecraft mods folder to avoid duplicate module registration.
 
 ## Current Features
 
@@ -26,6 +27,9 @@ through Meteor's `Modules` registry and static/reflection-based flags.
 - Deposits matching items with `SlotActionType.QUICK_MOVE`.
 - Confirms delivery with tooltip/color/fallback slot detection.
 - Can trigger `KamiSpawnerDrop` when target items are depleted.
+- Includes `KamiSpawnerDrop` for spawner GUI drop/sell automation, with optional
+  repeat-after-wait looping.
+- Registers the existing `KamiSpawnerProtect` module.
 - Includes GUI ownership guards shared with SpawnerDrop.
 - Includes a `MouseLockMixin` that prevents Minecraft from grabbing the mouse
   while a bot is running. It does not warp or click the system cursor.
@@ -33,7 +37,10 @@ through Meteor's `Modules` registry and static/reflection-based flags.
 ## Architecture
 
 - Entrypoint: `com.kami.order.KamiOrderAddon`
-- Module: `com.kami.order.modules.KamiOrderBot`
+- Modules:
+  - `com.kami.order.modules.KamiOrderBot`
+  - `com.kami.spawnersdrop.modules.KamiSpawnerDrop`
+  - `com.kami.order.modules.KamiSpawnerProtect`
 - Mixin: `com.kami.order.mixin.MouseLockMixin`
 - Fabric metadata: `src/main/resources/fabric.mod.json`
 - Mixin metadata: `src/main/resources/kami-order-bot.mixins.json`
@@ -46,7 +53,9 @@ The module is implemented as a tick-driven state machine using Meteor
 ```text
 src/main/java/com/kami/order/KamiOrderAddon.java
 src/main/java/com/kami/order/modules/KamiOrderBot.java
+src/main/java/com/kami/order/modules/KamiSpawnerProtect.java
 src/main/java/com/kami/order/mixin/MouseLockMixin.java
+src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java
 src/main/resources/fabric.mod.json
 src/main/resources/kami-order-bot.mixins.json
 src/main/resources/assets/kamiorder/icon.png
@@ -74,7 +83,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.3.5.jar
+build/libs/kami-order-bot-0.4.0.jar
 ```
 
 ## Maintainer Release Build
@@ -94,8 +103,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.3.5.jar
-build/libs/kami-order-bot-0.3.5-obfuscated.jar
+build/libs/kami-order-bot-0.4.0.jar
+build/libs/kami-order-bot-0.4.0-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -111,14 +120,17 @@ obfuscation, and resource rewriting are intentionally not enabled.
 ## Run
 
 Copy the built JAR into the Minecraft mods folder with Meteor Client and Fabric
-Loader installed. In Meteor, enable the module:
+Loader installed. Remove the old standalone `KamiSpawnerDrop` JAR before using
+the unified build. In Meteor, enable the modules you need:
 
 ```text
 Misc -> kami-order-bot
+Misc -> kami-spawner-drop
+Misc -> kami-spawner-protect
 ```
 
 Configure `target-item`, order naming settings, price filters, loop/drop options,
-and confirm-slot settings before running.
+drop timing, repeat wait, and confirm-slot settings before running.
 
 ## Dependencies
 
@@ -132,9 +144,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.3.5` builds successfully. The latest verified work added background
-operation support, GUI ownership coordination, mouse-lock prevention while bots
-run, and safer resume behavior after `KamiSpawnerDrop` finishes.
+Version `0.4.0` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work added the SpawnerDrop source to this
+repository, registered it from `KamiOrderAddon`, and kept obfuscation rules for
+both module packages.
 
 ## Known Limitations
 
@@ -145,3 +158,5 @@ run, and safer resume behavior after `KamiSpawnerDrop` finishes.
 - The background behavior still depends on Minecraft continuing to tick; disable
   Pause on Lost Focus and background throttling mods if needed.
 - Keybinds are not hardcoded by this addon. Use Meteor's module bind UI.
+- Running the old standalone SpawnerDrop JAR together with this unified JAR may
+  register duplicate modules.
