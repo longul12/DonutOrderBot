@@ -74,6 +74,16 @@
     automatic item dropping before/while picking up the spawner. Version bumped
     to `0.4.3`.
 
+- Description: Add `/sell` cleanup before SpawnerProtect breaks a spawner.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `gradle.properties`
+  Notes: If inventory space is low or nearby dropped items exceed the threshold,
+    Protect opens `/sell`, quick-moves sellable inventory stacks, closes the GUI,
+    waits briefly for pickup, and retries until the break safety checks pass.
+    Version bumped to `0.4.4`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -89,7 +99,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.4.3-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.4.4-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

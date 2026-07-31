@@ -146,9 +146,34 @@ public class KamiSpawnerProtect extends Module {
     private final Setting<Integer> minEmptySlotsBeforeBreak = sgGeneral.add(new IntSetting.Builder()
         .name("min-empty-slots-before-break")
         .description("Khong dap Spawner neu inventory con it hon so slot trong nay.")
-        .defaultValue(1)
+        .defaultValue(9)
         .range(0, 36)
-        .sliderRange(0, 9)
+        .sliderRange(0, 18)
+        .build()
+    );
+
+    private final Setting<Boolean> autoSellBeforeBreak = sgGeneral.add(new BoolSetting.Builder()
+        .name("auto-sell-before-break")
+        .description("Neu chua an toan thi mo /sell va shift-click do vao GUI de tao slot trong.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<String> sellCommand = sgGeneral.add(new meteordevelopment.meteorclient.settings.StringSetting.Builder()
+        .name("sell-command")
+        .description("Lenh mo GUI sell, khong can dau /. Mac dinh: sell.")
+        .defaultValue("sell")
+        .visible(autoSellBeforeBreak::get)
+        .build()
+    );
+
+    private final Setting<Integer> sellCleanupAttemptsMax = sgGeneral.add(new IntSetting.Builder()
+        .name("sell-cleanup-attempts")
+        .description("So lan toi da mo /sell de don do truoc khi dap Spawner.")
+        .defaultValue(5)
+        .range(1, 20)
+        .sliderRange(1, 10)
+        .visible(autoSellBeforeBreak::get)
         .build()
     );
 
@@ -291,6 +316,8 @@ public class KamiSpawnerProtect extends Module {
     private boolean protectGuiOwnerAcquired;
     private boolean finalOrderCompleted;
     private int finalOrderWaitTicks;
+    private int sellCleanupAttempts;
+    private int sellVerifyTicks;
 
     public KamiSpawnerProtect() {
         super(Categories.Misc, "kami-spawner-protect",
@@ -351,6 +378,8 @@ public class KamiSpawnerProtect extends Module {
         protectGuiOwnerAcquired = false;
         finalOrderCompleted = false;
         finalOrderWaitTicks = 0;
+        sellCleanupAttempts = 0;
+        sellVerifyTicks = 0;
     }
 
     @EventHandler
@@ -375,6 +404,9 @@ public class KamiSpawnerProtect extends Module {
             case START_SNEAK -> handleStartSneak();
             case ROTATE -> handleRotate();
             case ENSURE_INVENTORY_SPACE -> handleEnsureInventorySpace();
+            case OPEN_SELL_GUI -> handleOpenSellGui();
+            case SELL_ITEMS -> handleSellItems();
+            case VERIFY_SELL_SPACE -> handleVerifySellSpace();
             case BREAK_SPAWNER -> handleBreakSpawner();
             case WAIT_PICKUP -> handleWaitPickup();
             case FIND_ENDER_CHEST -> handleFindEnderChest();
@@ -615,10 +647,7 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        if (!isSafeToBreakSpawner()) {
-            state = State.ERROR;
-            return;
-        }
+        if (!isSafeToBreakSpawner()) return;
 
         spawnerCountBeforeBreak = countSpawnersInPlayerInventory();
         state = State.BREAK_SPAWNER;
@@ -638,10 +667,7 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        if (!isSafeToBreakSpawner()) {
-            state = State.ERROR;
-            return;
-        }
+        if (!isSafeToBreakSpawner()) return;
 
         if (!isTargetInInteractRange()) {
             state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.ERROR;
@@ -650,6 +676,99 @@ public class KamiSpawnerProtect extends Module {
         }
 
         BlockUtils.breakBlock(targetSpawnerPos, true);
+    }
+
+    private void beginSellCleanup(String reason) {
+        if (!autoSellBeforeBreak.get()) {
+            error(reason + " Auto sell dang tat - khong dap Spawner.");
+            state = State.ERROR;
+            return;
+        }
+
+        if (sellCleanupAttempts >= sellCleanupAttemptsMax.get()) {
+            error(reason + " Da thu /sell " + sellCleanupAttempts + " lan nhung van chua an toan.");
+            state = State.ERROR;
+            return;
+        }
+
+        sellCleanupAttempts++;
+        sellVerifyTicks = 0;
+        waitTicks = 0;
+        stopTemporarySneak();
+        if (isContainerOpen()) closeScreen();
+
+        log(reason + " Mo /sell de don do truoc khi dap Spawner (lan "
+            + sellCleanupAttempts + "/" + sellCleanupAttemptsMax.get() + ").");
+        state = State.OPEN_SELL_GUI;
+        scheduleDelay();
+    }
+
+    private void handleOpenSellGui() {
+        if (isContainerOpen()) {
+            state = State.SELL_ITEMS;
+            return;
+        }
+
+        if (waitTicks == 0) {
+            String cmd = sellCommand.get();
+            if (cmd == null || cmd.isBlank()) cmd = "sell";
+            cmd = cmd.trim();
+            if (cmd.startsWith("/")) cmd = cmd.substring(1);
+
+            if (mc.getNetworkHandler() != null) {
+                mc.getNetworkHandler().sendChatCommand(cmd);
+            } else if (mc.player.networkHandler != null) {
+                mc.player.networkHandler.sendChatMessage("/" + cmd);
+            }
+            log("Da gui /" + cmd + " - cho GUI sell.");
+        }
+
+        waitTicks++;
+        if (waitTicks > guiWaitTimeout.get()) {
+            error("Timeout mo GUI /sell - khong dap Spawner.");
+            state = State.ERROR;
+            return;
+        }
+        scheduleDelay();
+    }
+
+    private void handleSellItems() {
+        if (!isContainerOpen()) {
+            waitTicks = 0;
+            state = State.OPEN_SELL_GUI;
+            return;
+        }
+
+        int moved = quickMoveSellableItems();
+        log("Da shift-click " + moved + " stack vao GUI sell.");
+        sellVerifyTicks = 0;
+        state = State.VERIFY_SELL_SPACE;
+        scheduleDelay();
+    }
+
+    private void handleVerifySellSpace() {
+        sellVerifyTicks++;
+
+        if (isContainerOpen() && sellVerifyTicks >= 2) {
+            closeScreen();
+            scheduleDelay();
+            return;
+        }
+
+        if (sellVerifyTicks < 8) {
+            scheduleDelay();
+            return;
+        }
+
+        if (isBreakPickupSafeNow()) {
+            log("Da don do xong - tiep tuc dap Spawner.");
+            sellCleanupAttempts = 0;
+            state = State.START_SNEAK;
+            scheduleDelay();
+            return;
+        }
+
+        beginSellCleanup(getBreakSafetyReason());
     }
 
     private void handleWaitPickup() {
@@ -1298,23 +1417,30 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private boolean isSafeToBreakSpawner() {
+        if (isBreakPickupSafeNow()) return true;
+        beginSellCleanup(getBreakSafetyReason());
+        return false;
+    }
+
+    private boolean isBreakPickupSafeNow() {
+        return countEmptyInventorySlots() >= minEmptySlotsBeforeBreak.get()
+            && countGroundItemsNearPlayer() <= maxGroundItemsBeforeBreak.get();
+    }
+
+    private String getBreakSafetyReason() {
         int emptySlots = countEmptyInventorySlots();
         int minEmpty = minEmptySlotsBeforeBreak.get();
         if (emptySlots < minEmpty) {
-            error("Khong dap Spawner: inventory chi con " + emptySlots
-                + " slot trong, can toi thieu " + minEmpty + ".");
-            return false;
+            return "Inventory chi con " + emptySlots + " slot trong, can toi thieu " + minEmpty + ".";
         }
 
         int nearbyItems = countGroundItemsNearPlayer();
         int maxGround = maxGroundItemsBeforeBreak.get();
         if (nearbyItems > maxGround) {
-            error("Khong dap Spawner: quanh chan co " + nearbyItems
-                + " item entity, vuot gioi han " + maxGround + ".");
-            return false;
+            return "Quanh chan co " + nearbyItems + " item entity, vuot gioi han " + maxGround + ".";
         }
 
-        return true;
+        return "Chua dat dieu kien an toan de dap Spawner.";
     }
 
     private int countEmptyInventorySlots() {
@@ -1331,6 +1457,30 @@ public class KamiSpawnerProtect extends Module {
         double radius = Math.max(0.5, groundItemCheckRadius.get());
         Box box = mc.player.getBoundingBox().expand(radius, 1.0, radius);
         return mc.world.getEntitiesByClass(ItemEntity.class, box, item -> item != null && item.isAlive()).size();
+    }
+
+    private int quickMoveSellableItems() {
+        if (mc.player == null || mc.interactionManager == null || !ownsGui()) return 0;
+        ScreenHandler menu = mc.player.currentScreenHandler;
+        if (menu == null) return 0;
+
+        int playerStart = Math.max(0, menu.slots.size() - 36);
+        int moved = 0;
+        for (int slotId = playerStart; slotId < menu.slots.size(); slotId++) {
+            Slot slot = menu.slots.get(slotId);
+            ItemStack stack = slot.getStack();
+            if (!isSellableCleanupStack(stack)) continue;
+            mc.interactionManager.clickSlot(menu.syncId, slotId, 0, SlotActionType.QUICK_MOVE, mc.player);
+            moved++;
+        }
+        return moved;
+    }
+
+    private boolean isSellableCleanupStack(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        if (stack.isOf(Items.SPAWNER) || stack.isOf(Items.ENDER_CHEST)) return false;
+        if (isPickaxe(stack)) return false;
+        return true;
     }
 
     private BlockPos findPlacePosNearPlayer() {
@@ -1512,6 +1662,7 @@ public class KamiSpawnerProtect extends Module {
             case ARMED, SCAN_PLAYERS -> targetSpawnerPos == null ? "armed" : targetSpawnerPos.toShortString();
             case THREAT_CONFIRM -> confirmedThreat == null ? "confirm" : confirmedThreat.getName().getString();
             case MOVE_TO_SPAWNER -> "walk";
+            case OPEN_SELL_GUI, SELL_ITEMS, VERIFY_SELL_SPACE -> "sell cleanup";
             case BREAK_SPAWNER -> "breaking";
             case WAIT_PICKUP -> "pickup";
             case FIND_ENDER_CHEST -> "find echest";
@@ -1539,6 +1690,9 @@ public class KamiSpawnerProtect extends Module {
         START_SNEAK,
         ROTATE,
         ENSURE_INVENTORY_SPACE,
+        OPEN_SELL_GUI,
+        SELL_ITEMS,
+        VERIFY_SELL_SPACE,
         BREAK_SPAWNER,
         WAIT_PICKUP,
         FIND_ENDER_CHEST,
