@@ -53,6 +53,16 @@
   Notes: Both modules have `auto-spawner-protect` and
     `spawner-protect-module` settings. Version bumped to `0.4.1`.
 
+- Description: Convert OrderBot and SpawnerDrop GUI setting descriptions to
+    ASCII text.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
+    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`,
+    `gradle.properties`
+  Notes: Avoids missing glyphs/mojibake in Meteor's module settings UI. Version
+    bumped to `0.4.2`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -68,7 +78,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.4.1-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.4.2-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

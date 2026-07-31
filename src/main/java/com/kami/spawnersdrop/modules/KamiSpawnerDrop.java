@@ -54,7 +54,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Boolean> autoDropSpawner = sgGeneral.add(new BoolSetting.Builder()
         .name("auto-drop-spawner")
-        .description("Bật/tắt auto drop khi module active.")
+        .description("Bat/tat auto drop khi module active.")
         .defaultValue(true)
         .build()
     );
@@ -76,7 +76,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Integer> dropTimes = sgGeneral.add(new IntSetting.Builder()
         .name("drop-times")
-        .description("Số lần lặp: mở → drop → (sell) → ESC. Có thể gõ số lớn trực tiếp.")
+        .description("So lan lap: mo -> drop -> (sell) -> ESC. Co the go so lon truc tiep.")
         .defaultValue(3)
         .range(1, Integer.MAX_VALUE)
         .sliderRange(1, 256)
@@ -85,14 +85,14 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Boolean> repeatAfterWait = sgGeneral.add(new BoolSetting.Builder()
         .name("repeat-after-wait")
-        .description("Hết drop-times thì nghỉ theo phút rồi lặp lại batch drop-times. Bật = lặp vô hạn tới khi tắt module.")
+        .description("Het drop-times thi nghi theo phut roi lap lai batch drop-times. Bat = lap vo han toi khi tat module.")
         .defaultValue(false)
         .build()
     );
 
     private final Setting<Integer> repeatWaitMinutes = sgGeneral.add(new IntSetting.Builder()
         .name("repeat-wait-minutes")
-        .description("Số phút nghỉ giữa các batch drop-times. 0 = lặp lại ngay. Có thể gõ số rất lớn trực tiếp.")
+        .description("So phut nghi giua cac batch drop-times. 0 = lap lai ngay. Co the go so rat lon truc tiep.")
         .defaultValue(1)
         .range(0, Integer.MAX_VALUE)
         .sliderRange(0, 120)
@@ -102,14 +102,14 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Boolean> autoResumeOrder = sgGeneral.add(new BoolSetting.Builder()
         .name("auto-resume-order")
-        .description("Drop xong (không dừng an toàn) → bật lại Kami Order Bot nếu còn vòng.")
+        .description("Drop xong (khong dung an toan) -> bat lai Kami Order Bot neu con vong.")
         .defaultValue(true)
         .build()
     );
 
     private final Setting<String> orderModuleName = sgGeneral.add(new StringSetting.Builder()
         .name("order-module")
-        .description("Tên module Order. Mặc định: kami-order-bot.")
+        .description("Ten module Order. Mac dinh: kami-order-bot.")
         .defaultValue("kami-order-bot")
         .visible(autoResumeOrder::get)
         .build()
@@ -117,7 +117,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Boolean> finalOrderDuringRespawn = sgGeneral.add(new BoolSetting.Builder()
         .name("final-order-during-respawn")
-        .description("Khi chờ respawn vì gặp item lạ, bật Order một lần để dọn item đã drop/nhặt.")
+        .description("Khi cho respawn vi gap item la, bat Order mot lan de don item da drop/nhat.")
         .defaultValue(true)
         .visible(autoResumeOrder::get)
         .build()
@@ -125,7 +125,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("delay")
-        .description("Delay giữa mở GUI / click / ESC (tick) + random nhẹ.")
+        .description("Delay giua mo GUI / click / ESC (tick) + random nhe.")
         .defaultValue(8)
         .range(1, 60)
         .sliderRange(1, 40)
@@ -134,7 +134,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Integer> guiWaitTimeout = sgGeneral.add(new IntSetting.Builder()
         .name("gui-wait-timeout")
-        .description("Timeout chờ GUI Spawner load (tick).")
+        .description("Timeout cho GUI Spawner load (tick).")
         .defaultValue(100)
         .range(20, 400)
         .sliderRange(20, 200)
@@ -172,7 +172,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<List<Item>> stopItems = sgSafety.add(new ItemListSetting.Builder()
         .name("stop-items")
-        .description("Item lạ / không cần trong GUI. Thấy → Sell All 1 lần (sell-slot) rồi tự chờ respawn.")
+        .description("Item la / khong can trong GUI. Thay -> Sell All 1 lan roi tu cho respawn.")
         .defaultValue(List.of(
             Items.ARROW,
             Items.GLOWSTONE_DUST,
@@ -183,7 +183,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Integer> checkDelay = sgSafety.add(new IntSetting.Builder()
         .name("check-delay")
-        .description("Delay (tick) sau drop/sell trước khi check GUI.")
+        .description("Delay (tick) sau drop/sell truoc khi check GUI.")
         .defaultValue(5)
         .range(0, 40)
         .sliderRange(0, 20)
@@ -195,7 +195,7 @@ public class KamiSpawnerDrop extends Module {
      */
     private final Setting<Integer> arrowStopMinCount = sgSafety.add(new IntSetting.Builder()
         .name("arrow-stop-min-count")
-        .description("Arrow chỉ coi item lạ khi số lượng ≥ mức này (64 = full stack). Nút sang trang = 1 arrow.")
+        .description("Arrow chi coi item la khi so luong >= muc nay. Nut sang trang = 1 arrow.")
         .defaultValue(64)
         .range(1, 64)
         .sliderRange(1, 64)
@@ -207,7 +207,7 @@ public class KamiSpawnerDrop extends Module {
      */
     private final Setting<Integer> respawnDelayMin = sgSafety.add(new IntSetting.Builder()
         .name("respawn-delay-min")
-        .description("Phút chờ respawn — tự bật sau khi Sell All 1 lần vì item lạ. 0 = không chờ.")
+        .description("Phut cho respawn - tu bat sau khi Sell All 1 lan vi item la. 0 = khong cho.")
         .defaultValue(1)
         .range(0, 120)
         .sliderRange(0, 30)
@@ -218,7 +218,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Integer> dropSlot = sgSlot.add(new IntSetting.Builder()
         .name("drop-slot")
-        .description("Slot index nút VỨT HẾT (0-based). Mặc định 52.")
+        .description("Slot index nut VUT HET (0-based). Mac dinh 52.")
         .defaultValue(52)
         .range(0, 89)
         .sliderRange(0, 60)
@@ -227,28 +227,28 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Boolean> forceFixedSlot = sgSlot.add(new BoolSetting.Builder()
         .name("force-fixed-slot")
-        .description("true = luôn click đúng drop-slot.")
+        .description("true = luon click dung drop-slot.")
         .defaultValue(true)
         .build()
     );
 
     private final Setting<Boolean> preferTooltipScan = sgSlot.add(new BoolSetting.Builder()
         .name("prefer-tooltip-scan")
-        .description("Ưu tiên quét tooltip 'vứt hết' trước.")
+        .description("Uu tien quet tooltip 'vut het' truoc.")
         .defaultValue(false)
         .build()
     );
 
     private final Setting<Boolean> enableSell = sgSlot.add(new BoolSetting.Builder()
         .name("enable-sell")
-        .description("Gặp item lạ → Sell All 1 lần rồi auto respawn delay. Tắt = gặp item lạ thì dừng.")
+        .description("Gap item la -> Sell All 1 lan roi auto respawn delay. Tat = gap item la thi dung.")
         .defaultValue(true)
         .build()
     );
 
     private final Setting<Integer> sellSlot = sgSlot.add(new IntSetting.Builder()
         .name("sell-slot")
-        .description("Slot index nút Sell All (0-based). Mặc định 50.")
+        .description("Slot index nut Sell All (0-based). Mac dinh 50.")
         .defaultValue(50)
         .range(0, 89)
         .sliderRange(0, 60)
@@ -258,7 +258,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Boolean> forceSellSlot = sgSlot.add(new BoolSetting.Builder()
         .name("force-sell-slot")
-        .description("true = luôn click sell-slot nếu không trống. false = chỉ click khi tooltip khớp bán/sell.")
+        .description("true = luon click sell-slot neu khong trong. false = chi click khi tooltip khop ban/sell.")
         .defaultValue(true)
         .visible(enableSell::get)
         .build()
@@ -266,14 +266,14 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Boolean> chatFeedback = sgDebug.add(new BoolSetting.Builder()
         .name("chat-feedback")
-        .description("In thông báo chi tiết.")
+        .description("In thong bao chi tiet.")
         .defaultValue(true)
         .build()
     );
 
     private final Setting<Boolean> debugScanSlots = sgDebug.add(new BoolSetting.Builder()
         .name("debug-scan-slots")
-        .description("In list slot container khi mở GUI.")
+        .description("In list slot container khi mo GUI.")
         .defaultValue(false)
         .build()
     );
@@ -316,7 +316,7 @@ public class KamiSpawnerDrop extends Module {
 
     public KamiSpawnerDrop() {
         super(Categories.Misc, "kami-spawner-drop",
-            "Auto Drop Spawner: item lạ → Sell All 1 lần + auto respawn delay.");
+            "Auto Drop Spawner: unknown item -> Sell All once + auto respawn delay.");
     }
 
     public static boolean shouldPreventMouseLock() {

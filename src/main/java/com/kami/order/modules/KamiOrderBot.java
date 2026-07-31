@@ -102,7 +102,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<TargetMode> targetMode = sgGeneral.add(new EnumSetting.Builder<TargetMode>()
         .name("target-mode")
-        .description("Item List (chọn trong bảng) hoặc Manual String (gõ tay).")
+        .description("Item List (chon trong bang) hoac Manual String (go tay).")
         .defaultValue(TargetMode.Item_List)
         .build()
     );
@@ -113,7 +113,7 @@ public class KamiOrderBot extends Module {
      */
     private final Setting<String> orderPlayerName = sgGeneral.add(new StringSetting.Builder()
         .name("order-player-name")
-        .description("Tên người chơi: /order <tên>. Để trống thì /order theo tên item.")
+        .description("Ten nguoi choi: /order <ten>. De trong thi /order theo ten item.")
         .defaultValue("")
         .build()
     );
@@ -121,7 +121,7 @@ public class KamiOrderBot extends Module {
     /** Giống Item Highlight: bảng cuộn, Select, Search — item cần bán (lọc GUI). */
     private final Setting<List<Item>> targetItems = sgGeneral.add(new ItemListSetting.Builder()
         .name("target-item")
-        .description("Item cần bán: lọc order trong GUI (so khớp tên, bỏ màu).")
+        .description("Item can ban: loc order trong GUI (so khop ten, bo mau).")
         .defaultValue(List.of(Items.OBSIDIAN))
         .visible(() -> targetMode.get() == TargetMode.Item_List)
         .build()
@@ -130,7 +130,7 @@ public class KamiOrderBot extends Module {
     /** Nhập tay tên item để lọc GUI (vd: Iron Ingot). */
     private final Setting<String> manualOrderName = sgGeneral.add(new StringSetting.Builder()
         .name("manual-order-name")
-        .description("Tên item lọc trong GUI (vd: Iron Ingot). Không phân biệt hoa thường.")
+        .description("Ten item loc trong GUI (vd: Iron Ingot). Khong phan biet hoa thuong.")
         .defaultValue("Iron Ingot")
         .visible(() -> targetMode.get() == TargetMode.Manual_String)
         .build()
@@ -138,7 +138,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("delay")
-        .description("Delay cơ bản (tick) + random nhẹ giữa các thao tác.")
+        .description("Delay co ban (tick) + random nhe giua cac thao tac.")
         .defaultValue(8)
         .range(1, 60)
         .sliderRange(1, 40)
@@ -150,7 +150,7 @@ public class KamiOrderBot extends Module {
      */
     private final Setting<Boolean> autoSpawnerDrop = sgGeneral.add(new BoolSetting.Builder()
         .name("auto-spawner-drop")
-        .description("Khi hết item target trong người → tự kích hoạt Kami Spawner Drop.")
+        .description("Khi het item target trong nguoi -> tu kich hoat Kami Spawner Drop.")
         .defaultValue(false)
         .build()
     );
@@ -176,7 +176,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Integer> loopCount = sgGeneral.add(new IntSetting.Builder()
         .name("loop-count")
-        .description("Số vòng Order→Drop. 1 = order rồi drop xong dừng. 0 = lặp mãi. Cần auto-spawner-drop.")
+        .description("So vong Order -> Drop. 1 = order roi drop xong dung. 0 = lap mai. Can auto-spawner-drop.")
         .defaultValue(1)
         .range(0, 9999)
         .sliderRange(0, 200)
@@ -186,7 +186,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<String> spawnerDropModule = sgGeneral.add(new StringSetting.Builder()
         .name("spawner-drop-module")
-        .description("Tên module Spawner Drop (kebab-case). Mặc định: kami-spawner-drop.")
+        .description("Ten module Spawner Drop (kebab-case). Mac dinh: kami-spawner-drop.")
         .defaultValue("kami-spawner-drop")
         .visible(autoSpawnerDrop::get)
         .build()
@@ -209,7 +209,7 @@ public class KamiOrderBot extends Module {
      */
     private final Setting<Double> priceMin = sgFilter.add(new DoubleSetting.Builder()
         .name("price-min")
-        .description("Giá/item thấp nhất chấp nhận (thanh trượt). Order rẻ hơn → bỏ.")
+        .description("Gia/item thap nhat chap nhan. Order re hon -> bo.")
         .defaultValue(0.0)
         .min(0.0)
         .sliderRange(0.0, 50000.0)
@@ -222,7 +222,7 @@ public class KamiOrderBot extends Module {
      */
     private final Setting<Double> priceMax = sgFilter.add(new DoubleSetting.Builder()
         .name("price-max")
-        .description("Giá/item cao nhất chấp nhận (thanh trượt). 0 = không giới hạn. Order đắt hơn → bỏ.")
+        .description("Gia/item cao nhat chap nhan. 0 = khong gioi han. Order dat hon -> bo.")
         .defaultValue(0.0)
         .min(0.0)
         .sliderRange(0.0, 50000.0)
@@ -231,14 +231,14 @@ public class KamiOrderBot extends Module {
 
     private final Setting<PriceSelectMode> priceSelectMode = sgFilter.add(new EnumSetting.Builder<PriceSelectMode>()
         .name("price-select-mode")
-        .description("Trong khoảng [price-min, price-max]: Highest / Lowest / Auto_Balanced.")
+        .description("Trong khoang [price-min, price-max]: Highest / Lowest / Auto_Balanced.")
         .defaultValue(PriceSelectMode.Auto_Balanced)
         .build()
     );
 
     private final Setting<Integer> minRemaining = sgFilter.add(new IntSetting.Builder()
         .name("min-remaining")
-        .description("Bỏ order còn thiếu ít hơn giá trị này.")
+        .description("Bo order con thieu it hon gia tri nay.")
         .defaultValue(64)
         .range(1, 100000)
         .sliderRange(1, 5000)
@@ -247,7 +247,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Integer> guiWaitTimeout = sgGeneral.add(new IntSetting.Builder()
         .name("gui-wait-timeout")
-        .description("Timeout chờ GUI (tick).")
+        .description("Timeout cho GUI (tick).")
         .defaultValue(100)
         .range(20, 400)
         .sliderRange(20, 200)
@@ -256,7 +256,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Integer> resumeItemWaitTimeout = sgGeneral.add(new IntSetting.Builder()
         .name("resume-item-wait-timeout")
-        .description("Sau SpawnerDrop, chờ tối đa từng này tick để item vào inventory rồi mới gửi /order.")
+        .description("Sau SpawnerDrop, cho toi da tung nay tick de item vao inventory roi moi gui /order.")
         .defaultValue(160)
         .range(20, 600)
         .sliderRange(20, 300)
@@ -266,14 +266,14 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Boolean> scanNextPages = sgGeneral.add(new BoolSetting.Builder()
         .name("scan-next-pages")
-        .description("Nếu trang Order hiện tại không có target item thì bấm next page để quét tiếp.")
+        .description("Neu trang Order hien tai khong co target item thi bam next page de quet tiep.")
         .defaultValue(true)
         .build()
     );
 
     private final Setting<Integer> maxOrderPages = sgGeneral.add(new IntSetting.Builder()
         .name("max-order-pages")
-        .description("Số trang Order tối đa sẽ quét trước khi dừng tìm target item.")
+        .description("So trang Order toi da se quet truoc khi dung tim target item.")
         .defaultValue(5)
         .range(1, 20)
         .sliderRange(1, 10)
@@ -283,7 +283,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Integer> nextPageSlot = sgGeneral.add(new IntSetting.Builder()
         .name("next-page-slot")
-        .description("Slot nút sang trang tiếp theo trong GUI Order. Mặc định 53.")
+        .description("Slot nut sang trang tiep theo trong GUI Order. Mac dinh 53.")
         .defaultValue(53)
         .range(0, 89)
         .sliderRange(0, 60)
@@ -293,7 +293,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Integer> orderSearchRestarts = sgGeneral.add(new IntSetting.Builder()
         .name("order-search-restarts")
-        .description("Không tìm được order phù hợp thì đóng GUI và gửi /order lại tối đa từng này lần.")
+        .description("Khong tim duoc order phu hop thi dong GUI va gui /order lai toi da tung nay lan.")
         .defaultValue(3)
         .range(0, 10)
         .sliderRange(0, 5)
@@ -312,7 +312,7 @@ public class KamiOrderBot extends Module {
      */
     private final Setting<Integer> confirmSlot = sgConfirm.add(new IntSetting.Builder()
         .name("confirm-slot")
-        .description("Slot nút Xác nhận (0-based). Mặc định 17 = Hàng 2 Cột 9 (cuối hàng).")
+        .description("Slot nut Xac nhan (0-based). Mac dinh 17 = hang 2 cot 9.")
         .defaultValue(17)
         .range(0, 89)
         .sliderRange(0, 30)
@@ -321,14 +321,14 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Boolean> forceConfirmSlot = sgConfirm.add(new BoolSetting.Builder()
         .name("force-confirm-slot")
-        .description("true = ưu tiên click confirm-slot; vẫn fallback tooltip nếu trống/sai.")
+        .description("true = uu tien click confirm-slot; van fallback tooltip neu trong/sai.")
         .defaultValue(true)
         .build()
     );
 
     private final Setting<Integer> postConfirmGuiWait = sgConfirm.add(new IntSetting.Builder()
         .name("post-confirm-gui-wait")
-        .description("Sau confirm, chờ tối đa từng này tick để server mở lại GUI order rồi ESC thoát.")
+        .description("Sau confirm, cho toi da tung nay tick de server mo lai GUI order roi ESC thoat.")
         .defaultValue(60)
         .range(0, 200)
         .sliderRange(0, 120)
@@ -337,7 +337,7 @@ public class KamiOrderBot extends Module {
 
     private final Setting<Boolean> chatFeedback = sgDebug.add(new BoolSetting.Builder()
         .name("chat-feedback")
-        .description("In thông báo chi tiết ra chat.")
+        .description("In thong bao chi tiet ra chat.")
         .defaultValue(true)
         .build()
     );
@@ -413,7 +413,7 @@ public class KamiOrderBot extends Module {
 
     public KamiOrderBot() {
         super(Categories.Misc, "kami-order-bot",
-            "Auto Order SMP: score = giá × log(còn thiếu+1), shift-double-click fill, confirm.");
+            "Auto Order SMP: score = price * log(remaining + 1), fill items, confirm orders.");
     }
 
     @Override

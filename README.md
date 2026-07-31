@@ -85,7 +85,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.4.1.jar
+build/libs/kami-order-bot-0.4.2.jar
 ```
 
 ## Maintainer Release Build
@@ -105,8 +105,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.4.1.jar
-build/libs/kami-order-bot-0.4.1-obfuscated.jar
+build/libs/kami-order-bot-0.4.2.jar
+build/libs/kami-order-bot-0.4.2-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -146,9 +146,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.4.1` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work added auto-enable settings so OrderBot
-and SpawnerDrop can turn on SpawnerProtect when they start.
+Version `0.4.2` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work converts OrderBot and SpawnerDrop
+Meteor setting descriptions to ASCII text so they render correctly in the GUI.
 
 ## Known Limitations
 
