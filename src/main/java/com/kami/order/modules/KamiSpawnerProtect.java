@@ -169,10 +169,10 @@ public class KamiSpawnerProtect extends Module {
 
     private final Setting<Integer> sellCleanupAttemptsMax = sgGeneral.add(new IntSetting.Builder()
         .name("sell-cleanup-attempts")
-        .description("So lan toi da mo /sell de don do truoc khi dap Spawner.")
-        .defaultValue(5)
-        .range(1, 20)
-        .sliderRange(1, 10)
+        .description("So lan toi da mo /sell de don do. Dat cao de ban den khi het item duoi dat.")
+        .defaultValue(60)
+        .range(1, 999)
+        .sliderRange(1, 120)
         .visible(autoSellBeforeBreak::get)
         .build()
     );
@@ -180,7 +180,7 @@ public class KamiSpawnerProtect extends Module {
     private final Setting<Integer> maxGroundItemsBeforeBreak = sgGeneral.add(new IntSetting.Builder()
         .name("max-ground-items-before-break")
         .description("Khong dap Spawner neu quanh chan co nhieu item entity hon muc nay.")
-        .defaultValue(8)
+        .defaultValue(0)
         .range(0, 256)
         .sliderRange(0, 64)
         .build()
@@ -739,8 +739,8 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        int moved = quickMoveSellableItems();
-        log("Da shift-click " + moved + " stack vao GUI sell.");
+        int moved = quickMoveSellableItems(2);
+        log("Da shift-click 2 luot, tong " + moved + " stack vao GUI sell.");
         sellVerifyTicks = 0;
         state = State.VERIFY_SELL_SPACE;
         scheduleDelay();
@@ -755,7 +755,7 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        if (sellVerifyTicks < 8) {
+        if (sellVerifyTicks < 10) {
             scheduleDelay();
             return;
         }
@@ -1459,19 +1459,22 @@ public class KamiSpawnerProtect extends Module {
         return mc.world.getEntitiesByClass(ItemEntity.class, box, item -> item != null && item.isAlive()).size();
     }
 
-    private int quickMoveSellableItems() {
+    private int quickMoveSellableItems(int passes) {
         if (mc.player == null || mc.interactionManager == null || !ownsGui()) return 0;
         ScreenHandler menu = mc.player.currentScreenHandler;
         if (menu == null) return 0;
 
         int playerStart = Math.max(0, menu.slots.size() - 36);
         int moved = 0;
-        for (int slotId = playerStart; slotId < menu.slots.size(); slotId++) {
-            Slot slot = menu.slots.get(slotId);
-            ItemStack stack = slot.getStack();
-            if (!isSellableCleanupStack(stack)) continue;
-            mc.interactionManager.clickSlot(menu.syncId, slotId, 0, SlotActionType.QUICK_MOVE, mc.player);
-            moved++;
+        int loops = Math.max(1, passes);
+        for (int pass = 0; pass < loops; pass++) {
+            for (int slotId = playerStart; slotId < menu.slots.size(); slotId++) {
+                Slot slot = menu.slots.get(slotId);
+                ItemStack stack = slot.getStack();
+                if (!isSellableCleanupStack(stack)) continue;
+                mc.interactionManager.clickSlot(menu.syncId, slotId, 0, SlotActionType.QUICK_MOVE, mc.player);
+                moved++;
+            }
         }
         return moved;
     }

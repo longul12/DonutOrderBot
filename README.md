@@ -32,9 +32,9 @@ the Minecraft mods folder to avoid duplicate module registration.
 - Registers the existing `KamiSpawnerProtect` module.
 - `KamiOrderBot` and `KamiSpawnerDrop` can auto-enable `KamiSpawnerProtect` when
   they start.
-- `KamiSpawnerProtect` can open `/sell` and quick-move sellable items before
-  breaking a spawner when inventory space is low or too many dropped items are
-  near the player.
+- `KamiSpawnerProtect` can open `/sell`, quick-move sellable items twice per
+  sell GUI, and repeat cleanup until no dropped items remain near the player
+  before breaking a spawner.
 - Includes GUI ownership guards shared with SpawnerDrop.
 - Includes a `MouseLockMixin` that prevents Minecraft from grabbing the mouse
   while a bot is running. It does not warp or click the system cursor.
@@ -88,7 +88,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.4.4.jar
+build/libs/kami-order-bot-0.4.5.jar
 ```
 
 ## Maintainer Release Build
@@ -108,8 +108,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.4.4.jar
-build/libs/kami-order-bot-0.4.4-obfuscated.jar
+build/libs/kami-order-bot-0.4.5.jar
+build/libs/kami-order-bot-0.4.5-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -149,9 +149,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.4.4` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work lets SpawnerProtect use `/sell` cleanup
-to free inventory space before breaking a spawner.
+Version `0.4.5` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work makes SpawnerProtect run two fast
+shift-click passes per `/sell` GUI and keep cleaning until nearby dropped items
+are gone before breaking a spawner.
 
 ## Known Limitations
 

@@ -84,6 +84,15 @@
     waits briefly for pickup, and retries until the break safety checks pass.
     Version bumped to `0.4.4`.
 
+- Description: Make SpawnerProtect sell cleanup more aggressive.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `gradle.properties`
+  Notes: Each `/sell` GUI now runs two quick-move passes. Default ground item
+    threshold is `0`, so Protect keeps selling/waiting until nearby dropped
+    items are gone before breaking a spawner. Version bumped to `0.4.5`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -99,7 +108,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.4.4-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.4.5-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
