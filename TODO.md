@@ -63,6 +63,17 @@
   Notes: Avoids missing glyphs/mojibake in Meteor's module settings UI. Version
     bumped to `0.4.2`.
 
+- Description: Prevent SpawnerProtect from breaking spawners when pickup safety
+    is poor.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `gradle.properties`
+  Notes: Added `min-empty-slots-before-break`,
+    `max-ground-items-before-break`, and `ground-item-check-radius`. Removed
+    automatic item dropping before/while picking up the spawner. Version bumped
+    to `0.4.3`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -78,7 +89,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.4.2-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.4.3-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

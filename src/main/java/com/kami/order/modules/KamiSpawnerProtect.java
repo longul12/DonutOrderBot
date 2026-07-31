@@ -24,6 +24,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -36,6 +37,7 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -141,10 +143,30 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
-    private final Setting<Boolean> dropLargestWhenFull = sgGeneral.add(new BoolSetting.Builder()
-        .name("drop-largest-when-full")
-        .description("Inventory day thi vut stack nhieu nhat, bo qua Spawner va Ender Chest.")
-        .defaultValue(true)
+    private final Setting<Integer> minEmptySlotsBeforeBreak = sgGeneral.add(new IntSetting.Builder()
+        .name("min-empty-slots-before-break")
+        .description("Khong dap Spawner neu inventory con it hon so slot trong nay.")
+        .defaultValue(1)
+        .range(0, 36)
+        .sliderRange(0, 9)
+        .build()
+    );
+
+    private final Setting<Integer> maxGroundItemsBeforeBreak = sgGeneral.add(new IntSetting.Builder()
+        .name("max-ground-items-before-break")
+        .description("Khong dap Spawner neu quanh chan co nhieu item entity hon muc nay.")
+        .defaultValue(8)
+        .range(0, 256)
+        .sliderRange(0, 64)
+        .build()
+    );
+
+    private final Setting<Double> groundItemCheckRadius = sgGeneral.add(new DoubleSetting.Builder()
+        .name("ground-item-check-radius")
+        .description("Ban kinh quanh player de dem item entity duoi chan truoc khi dap Spawner.")
+        .defaultValue(2.5)
+        .min(0.5)
+        .sliderRange(0.5, 8.0)
         .build()
     );
 
@@ -593,13 +615,9 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        if (isInventoryFull() && dropLargestWhenFull.get()) {
-            if (dropLargestStack()) {
-                log("Inventory day - da vut stack nhieu nhat de cho nhat Spawner.");
-                scheduleDelay();
-                return;
-            }
-            warning("Inventory day nhung khong co stack phu hop de vut.");
+        if (!isSafeToBreakSpawner()) {
+            state = State.ERROR;
+            return;
         }
 
         spawnerCountBeforeBreak = countSpawnersInPlayerInventory();
@@ -620,6 +638,11 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
+        if (!isSafeToBreakSpawner()) {
+            state = State.ERROR;
+            return;
+        }
+
         if (!isTargetInInteractRange()) {
             state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.ERROR;
             if (state == State.ERROR) error("Spawner ngoai tam interact va auto-walk-to-spawner dang tat.");
@@ -631,9 +654,6 @@ public class KamiSpawnerProtect extends Module {
 
     private void handleWaitPickup() {
         waitTicks++;
-        if (isInventoryFull() && !hasNewSpawnerPickedUp() && dropLargestWhenFull.get()) {
-            dropLargestStack();
-        }
 
         if (hasNewSpawnerPickedUp()) {
             log("Spawner da vao inventory - tim Ender Chest gan nhat.");
@@ -1277,33 +1297,40 @@ public class KamiSpawnerProtect extends Module {
             || stack.isOf(Items.WOODEN_PICKAXE);
     }
 
-    private boolean isInventoryFull() {
-        if (mc.player == null) return false;
-        for (int i = 0; i < 36; i++) {
-            if (mc.player.getInventory().getStack(i).isEmpty()) return false;
+    private boolean isSafeToBreakSpawner() {
+        int emptySlots = countEmptyInventorySlots();
+        int minEmpty = minEmptySlotsBeforeBreak.get();
+        if (emptySlots < minEmpty) {
+            error("Khong dap Spawner: inventory chi con " + emptySlots
+                + " slot trong, can toi thieu " + minEmpty + ".");
+            return false;
         }
+
+        int nearbyItems = countGroundItemsNearPlayer();
+        int maxGround = maxGroundItemsBeforeBreak.get();
+        if (nearbyItems > maxGround) {
+            error("Khong dap Spawner: quanh chan co " + nearbyItems
+                + " item entity, vuot gioi han " + maxGround + ".");
+            return false;
+        }
+
         return true;
     }
 
-    private boolean dropLargestStack() {
-        if (mc.player == null || mc.interactionManager == null) return false;
-        int bestIndex = -1;
-        int bestCount = 0;
-
+    private int countEmptyInventorySlots() {
+        if (mc.player == null) return 0;
+        int empty = 0;
         for (int i = 0; i < 36; i++) {
-            ItemStack stack = mc.player.getInventory().getStack(i);
-            if (stack.isEmpty()) return false;
-            if (stack.isOf(Items.SPAWNER) || stack.isOf(Items.ENDER_CHEST)) continue;
-            if (stack.getCount() > bestCount) {
-                bestIndex = i;
-                bestCount = stack.getCount();
-            }
+            if (mc.player.getInventory().getStack(i).isEmpty()) empty++;
         }
+        return empty;
+    }
 
-        if (bestIndex < 0) return false;
-        int slotId = inventoryIndexToPlayerSlotId(bestIndex);
-        mc.interactionManager.clickSlot(mc.player.playerScreenHandler.syncId, slotId, 1, SlotActionType.THROW, mc.player);
-        return true;
+    private int countGroundItemsNearPlayer() {
+        if (mc.player == null || mc.world == null) return 0;
+        double radius = Math.max(0.5, groundItemCheckRadius.get());
+        Box box = mc.player.getBoundingBox().expand(radius, 1.0, radius);
+        return mc.world.getEntitiesByClass(ItemEntity.class, box, item -> item != null && item.isAlive()).size();
     }
 
     private BlockPos findPlacePosNearPlayer() {
