@@ -30,6 +30,8 @@ the Minecraft mods folder to avoid duplicate module registration.
 - Includes `KamiSpawnerDrop` for spawner GUI drop/sell automation, with optional
   repeat-after-wait looping.
 - Registers the existing `KamiSpawnerProtect` module.
+- `KamiOrderBot` and `KamiSpawnerDrop` can auto-enable `KamiSpawnerProtect` when
+  they start.
 - Includes GUI ownership guards shared with SpawnerDrop.
 - Includes a `MouseLockMixin` that prevents Minecraft from grabbing the mouse
   while a bot is running. It does not warp or click the system cursor.
@@ -83,7 +85,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.4.0.jar
+build/libs/kami-order-bot-0.4.1.jar
 ```
 
 ## Maintainer Release Build
@@ -103,8 +105,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.4.0.jar
-build/libs/kami-order-bot-0.4.0-obfuscated.jar
+build/libs/kami-order-bot-0.4.1.jar
+build/libs/kami-order-bot-0.4.1-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -144,10 +146,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.4.0` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work added the SpawnerDrop source to this
-repository, registered it from `KamiOrderAddon`, and kept obfuscation rules for
-both module packages.
+Version `0.4.1` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work added auto-enable settings so OrderBot
+and SpawnerDrop can turn on SpawnerProtect when they start.
 
 ## Known Limitations
 

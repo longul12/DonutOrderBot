@@ -59,6 +59,21 @@ public class KamiSpawnerDrop extends Module {
         .build()
     );
 
+    private final Setting<Boolean> autoSpawnerProtect = sgGeneral.add(new BoolSetting.Builder()
+        .name("auto-spawner-protect")
+        .description("Khi SpawnerDrop hoat dong thi tu bat Kami Spawner Protect neu chua bat.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<String> spawnerProtectModule = sgGeneral.add(new StringSetting.Builder()
+        .name("spawner-protect-module")
+        .description("Ten module Spawner Protect. Mac dinh: kami-spawner-protect.")
+        .defaultValue("kami-spawner-protect")
+        .visible(autoSpawnerProtect::get)
+        .build()
+    );
+
     private final Setting<Integer> dropTimes = sgGeneral.add(new IntSetting.Builder()
         .name("drop-times")
         .description("Số lần lặp: mở → drop → (sell) → ESC. Có thể gõ số lớn trực tiếp.")
@@ -332,6 +347,8 @@ public class KamiSpawnerDrop extends Module {
             toggle();
             return;
         }
+
+        tryActivateSpawnerProtect();
 
         remainingDrops = dropTimes.get();
         state = State.IDLE_WAIT_LOOK;
@@ -866,6 +883,29 @@ public class KamiSpawnerDrop extends Module {
         } catch (Throwable t) {
             log("Không đọc được flag resume (" + t.getMessage() + "), vẫn thử bật Order.");
             return true;
+        }
+    }
+
+    private void tryActivateSpawnerProtect() {
+        if (!autoSpawnerProtect.get()) return;
+
+        String name = spawnerProtectModule.get();
+        if (name == null || name.isBlank()) name = "kami-spawner-protect";
+        name = name.trim();
+
+        Module mod = findModuleByName(name);
+        if (mod == null) {
+            warning("Khong tim thay module \"" + name + "\" de tu bat Spawner Protect.");
+            return;
+        }
+
+        if (mod.isActive()) return;
+
+        mod.toggle();
+        if (mod.isActive()) {
+            log("Da tu bat " + mod.title + " cung voi SpawnerDrop.");
+        } else {
+            warning("Goi toggle " + mod.title + " nhung module van tat.");
         }
     }
 
