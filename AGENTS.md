@@ -25,8 +25,8 @@ through reflection:
 ## Module List
 
 - `kami-order-bot`: Main order automation module.
-- `kami-spawner-drop`: Spawner GUI drop/sell automation module, now copied into
-  this repository under `com.kami.spawnersdrop.modules`.
+- `kami-spawner-drop`: Spawner GUI drop/sell automation module under
+  `com.kami.order.modules`.
 - `kami-spawner-protect`: Existing spawner protection module registered by the
   same addon entrypoint.
 
@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.4.6.jar
+build/libs/kami-order-bot-0.4.7.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.4.6-obfuscated.jar
+build/libs/kami-order-bot-0.4.7-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -96,8 +96,8 @@ resource rewriting without fresh Minecraft startup testing.
 Current keep rules preserve the Fabric/Meteor entrypoint
 `com.kami.order.KamiOrderAddon`, mixin class
 `com.kami.order.mixin.MouseLockMixin`, and module packages
-`com.kami.order.modules.**` and `com.kami.spawnersdrop.modules.**` with public
-API members for Meteor settings, event handlers, enum constants, and reflection.
+`com.kami.order.modules.**` with public API members for Meteor settings, event
+handlers, enum constants, and reflection.
 
 ## Debugging
 
@@ -113,7 +113,7 @@ API members for Meteor settings, event handlers, enum constants, and reflection.
 ## Naming Conventions
 
 - Addon package: `com.kami.order`
-- SpawnerDrop package: `com.kami.spawnersdrop.modules`
+- SpawnerDrop package: `com.kami.order.modules`
 - Module name: `kami-order-bot`
 - Addon id: `kami-order-bot`
 - Main class: `KamiOrderAddon`
@@ -125,6 +125,9 @@ API members for Meteor settings, event handlers, enum constants, and reflection.
 - `KamiSpawnerDrop` may restart `KamiOrderBot` if Order is stuck active after
   handing off ownership. Preserve this behavior unless replacing the whole
   handoff model.
+- Keep Meteor modules with `@EventHandler` inside `com.kami.order...`; moving
+  them outside the addon package can crash Meteor Orbit with
+  `NoLambdaFactoryException`.
 - Do not install the old standalone SpawnerDrop JAR beside this unified addon;
   that can create duplicate module registration.
 - `MouseLockMixin` only cancels `Mouse.lockCursor` while a bot is running; it must

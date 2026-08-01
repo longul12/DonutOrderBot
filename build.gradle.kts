@@ -159,7 +159,6 @@ tasks.register("obfuscateJar") {
                         "class"("classes" to "private", "methods" to "public", "fields" to "public") {
                             "patternset" {
                                 "include"("name" to "com.kami.order.modules.**")
-                                "include"("name" to "com.kami.spawnersdrop.modules.**")
                             }
                         }
                     }

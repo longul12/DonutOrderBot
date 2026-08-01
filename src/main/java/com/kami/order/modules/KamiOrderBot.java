@@ -67,7 +67,7 @@ public class KamiOrderBot extends Module {
     public static boolean shouldPreventMouseLock() {
         if (keepMouseFreeWhileRunning) return true;
         try {
-            Class<?> cl = Class.forName("com.kami.spawnersdrop.modules.KamiSpawnerDrop");
+            Class<?> cl = Class.forName("com.kami.order.modules.KamiSpawnerDrop");
             Object value = cl.getMethod("shouldPreventMouseLock").invoke(null);
             return value instanceof Boolean b && b;
         } catch (Throwable ignored) {

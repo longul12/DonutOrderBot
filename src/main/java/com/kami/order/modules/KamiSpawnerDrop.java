@@ -1,4 +1,4 @@
-package com.kami.spawnersdrop.modules;
+package com.kami.order.modules;
 
 import meteordevelopment.meteorclient.events.meteor.KeyEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;

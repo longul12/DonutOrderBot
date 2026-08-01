@@ -39,7 +39,7 @@
   Priority: High
   Status: Completed
   Files: `src/main/java/com/kami/order/KamiOrderAddon.java`,
-    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`,
+    `src/main/java/com/kami/order/modules/KamiSpawnerDrop.java`,
     `build.gradle.kts`, `gradle.properties`, `src/main/resources/fabric.mod.json`
   Notes: `KamiOrderAddon` now registers OrderBot, SpawnerDrop, and
     SpawnerProtect. Version bumped to `0.4.0`.
@@ -48,7 +48,7 @@
   Priority: High
   Status: Completed
   Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
-    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`,
+    `src/main/java/com/kami/order/modules/KamiSpawnerDrop.java`,
     `gradle.properties`
   Notes: Automatic activation can conflict with Order/Drop GUI ownership.
     SpawnerProtect remains registered but must be enabled manually. Version
@@ -59,7 +59,7 @@
   Priority: High
   Status: Completed
   Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
-    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`,
+    `src/main/java/com/kami/order/modules/KamiSpawnerDrop.java`,
     `gradle.properties`
   Notes: Avoids missing glyphs/mojibake in Meteor's module settings UI. Version
     bumped to `0.4.2`.
@@ -94,13 +94,25 @@
     threshold is `0`, so Protect keeps selling/waiting until nearby dropped
     items are gone before breaking a spawner. Version bumped to `0.4.5`.
 
+- Description: Fix Meteor Orbit crash when OrderBot toggles SpawnerDrop.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerDrop.java`,
+    `src/main/java/com/kami/order/KamiOrderAddon.java`,
+    `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
+    `build.gradle.kts`, `gradle.properties`
+  Notes: SpawnerDrop now lives under `com.kami.order.modules`, matching the
+    addon package returned by `KamiOrderAddon#getPackage()`. This fixes
+    `NoLambdaFactoryException` when Meteor subscribes SpawnerDrop event handlers.
+    Version bumped to `0.4.7`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
   Priority: High
   Status: In Progress
   Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
-    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`
+    `src/main/java/com/kami/order/modules/KamiSpawnerDrop.java`
   Notes: Build is verified, but server GUI behavior and the unified JAR must be
     validated manually in Minecraft.
 
@@ -109,7 +121,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.4.6-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.4.7-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
@@ -144,5 +156,5 @@
   Priority: Low
   Status: Not Started
   Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
-    `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`
+    `src/main/java/com/kami/order/modules/KamiSpawnerDrop.java`
   Notes: Current reflection approach still works inside the unified JAR.

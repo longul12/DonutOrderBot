@@ -44,7 +44,7 @@ the Minecraft mods folder to avoid duplicate module registration.
 - Entrypoint: `com.kami.order.KamiOrderAddon`
 - Modules:
   - `com.kami.order.modules.KamiOrderBot`
-  - `com.kami.spawnersdrop.modules.KamiSpawnerDrop`
+  - `com.kami.order.modules.KamiSpawnerDrop`
   - `com.kami.order.modules.KamiSpawnerProtect`
 - Mixin: `com.kami.order.mixin.MouseLockMixin`
 - Fabric metadata: `src/main/resources/fabric.mod.json`
@@ -60,7 +60,7 @@ src/main/java/com/kami/order/KamiOrderAddon.java
 src/main/java/com/kami/order/modules/KamiOrderBot.java
 src/main/java/com/kami/order/modules/KamiSpawnerProtect.java
 src/main/java/com/kami/order/mixin/MouseLockMixin.java
-src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java
+src/main/java/com/kami/order/modules/KamiSpawnerDrop.java
 src/main/resources/fabric.mod.json
 src/main/resources/kami-order-bot.mixins.json
 src/main/resources/assets/kamiorder/icon.png
@@ -88,7 +88,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.4.6.jar
+build/libs/kami-order-bot-0.4.7.jar
 ```
 
 ## Maintainer Release Build
@@ -108,8 +108,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.4.6.jar
-build/libs/kami-order-bot-0.4.6-obfuscated.jar
+build/libs/kami-order-bot-0.4.7.jar
+build/libs/kami-order-bot-0.4.7-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -149,9 +149,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.4.6` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work removes automatic SpawnerProtect
-activation from OrderBot and SpawnerDrop to avoid GUI ownership conflicts.
+Version `0.4.7` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work moves SpawnerDrop into
+`com.kami.order.modules` so Meteor Orbit can subscribe its tick listener without
+`NoLambdaFactoryException`.
 
 ## Known Limitations
 

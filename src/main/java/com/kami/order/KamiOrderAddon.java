@@ -1,8 +1,8 @@
 package com.kami.order;
 
 import com.kami.order.modules.KamiOrderBot;
+import com.kami.order.modules.KamiSpawnerDrop;
 import com.kami.order.modules.KamiSpawnerProtect;
-import com.kami.spawnersdrop.modules.KamiSpawnerDrop;
 import com.mojang.logging.LogUtils;
 import meteordevelopment.meteorclient.addons.GithubRepo;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
