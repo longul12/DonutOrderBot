@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.2.jar
+build/libs/kami-order-bot-0.5.3.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.2-obfuscated.jar
+build/libs/kami-order-bot-0.5.3-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -135,7 +135,7 @@ handlers, enum constants, and reflection.
 - Fabric metadata uses Gradle resource expansion for `${version}`.
 - SpawnerProtect `/sell` cleanup intentionally uses its own fixed tick waits
   (`sell-open-delay`, `sell-close-delay`, `sell-pickup-wait`) instead of the
-  randomized module `delay`; it should click Sell All/Dump All twice through
-  `sell-dump-slot` and only fallback to shift-click if the button cannot be
-  resolved.
+  randomized module `delay`; it should shift-click all sellable inventory stacks
+  into the sell GUI twice. Do not replace this with a Sell All/Dump All button
+  click unless the server GUI flow is deliberately changed.
 - There are no tests; build and in-game verification are both important.
