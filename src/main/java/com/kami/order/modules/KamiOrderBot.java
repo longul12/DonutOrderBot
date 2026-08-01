@@ -159,21 +159,6 @@ public class KamiOrderBot extends Module {
      * Số vòng: (Order đến hết item → Drop spawner) × N.
      * Sau drop, Order tự bật lại nếu còn vòng. 0 = lặp vô hạn.
      */
-    private final Setting<Boolean> autoSpawnerProtect = sgGeneral.add(new BoolSetting.Builder()
-        .name("auto-spawner-protect")
-        .description("Khi OrderBot hoat dong thi tu bat Kami Spawner Protect neu chua bat.")
-        .defaultValue(true)
-        .build()
-    );
-
-    private final Setting<String> spawnerProtectModule = sgGeneral.add(new StringSetting.Builder()
-        .name("spawner-protect-module")
-        .description("Ten module Spawner Protect. Mac dinh: kami-spawner-protect.")
-        .defaultValue("kami-spawner-protect")
-        .visible(autoSpawnerProtect::get)
-        .build()
-    );
-
     private final Setting<Integer> loopCount = sgGeneral.add(new IntSetting.Builder()
         .name("loop-count")
         .description("So vong Order -> Drop. 1 = order roi drop xong dung. 0 = lap mai. Can auto-spawner-drop.")
@@ -453,8 +438,6 @@ public class KamiOrderBot extends Module {
         if (deposit == null || deposit == Items.AIR) {
             warning("Không resolve được Item — dump sẽ khớp theo tên hiển thị.");
         }
-
-        tryActivateSpawnerProtect();
 
         int max = loopCount.get();
         String loopInfo = !autoSpawnerDrop.get() ? "loop off"
@@ -1757,29 +1740,6 @@ public class KamiOrderBot extends Module {
      * <b>Chỉ khi túi không còn vật phẩm order.</b>
      * Tên mặc định: {@code kami-spawner-drop}.
      */
-    private void tryActivateSpawnerProtect() {
-        if (!autoSpawnerProtect.get()) return;
-
-        String name = spawnerProtectModule.get();
-        if (name == null || name.isBlank()) name = "kami-spawner-protect";
-        name = name.trim();
-
-        Module mod = findModuleByName(name);
-        if (mod == null) {
-            warning("Khong tim thay module \"" + name + "\" de tu bat Spawner Protect.");
-            return;
-        }
-
-        if (mod.isActive()) return;
-
-        mod.toggle();
-        if (mod.isActive()) {
-            log("Da tu bat " + mod.title + " cung voi OrderBot.");
-        } else {
-            warning("Goi toggle " + mod.title + " nhung module van tat.");
-        }
-    }
-
     private void tryActivateSpawnerDrop() {
         if (suppressNextSpawnerDrop) {
             suppressNextSpawnerDrop = false;

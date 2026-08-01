@@ -44,14 +44,15 @@
   Notes: `KamiOrderAddon` now registers OrderBot, SpawnerDrop, and
     SpawnerProtect. Version bumped to `0.4.0`.
 
-- Description: Auto-enable SpawnerProtect from OrderBot and SpawnerDrop.
+- Description: Remove auto-enable SpawnerProtect from OrderBot and SpawnerDrop.
   Priority: High
   Status: Completed
   Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
     `src/main/java/com/kami/spawnersdrop/modules/KamiSpawnerDrop.java`,
     `gradle.properties`
-  Notes: Both modules have `auto-spawner-protect` and
-    `spawner-protect-module` settings. Version bumped to `0.4.1`.
+  Notes: Automatic activation can conflict with Order/Drop GUI ownership.
+    SpawnerProtect remains registered but must be enabled manually. Version
+    bumped to `0.4.6`.
 
 - Description: Convert OrderBot and SpawnerDrop GUI setting descriptions to
     ASCII text.
@@ -108,7 +109,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.4.5-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.4.6-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
