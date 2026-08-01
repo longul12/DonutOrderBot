@@ -126,23 +126,6 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
-    private final Setting<Boolean> finalOrderBeforeBreak = sgGeneral.add(new BoolSetting.Builder()
-        .name("final-order-before-break")
-        .description("Khi co nguoi la: tat Drop, cho Order ban het do lan cuoi, chan Drop roi moi dap Spawner.")
-        .defaultValue(true)
-        .build()
-    );
-
-    private final Setting<Integer> finalOrderTimeout = sgGeneral.add(new IntSetting.Builder()
-        .name("final-order-timeout")
-        .description("So tick toi da cho Order lan cuoi truoc khi Protect bao loi.")
-        .defaultValue(600)
-        .range(40, 2400)
-        .sliderRange(100, 1200)
-        .visible(finalOrderBeforeBreak::get)
-        .build()
-    );
-
     private final Setting<Integer> minEmptySlotsBeforeBreak = sgGeneral.add(new IntSetting.Builder()
         .name("min-empty-slots-before-break")
         .description("Khong dap Spawner neu inventory con it hon so slot trong nay.")
@@ -314,8 +297,6 @@ public class KamiSpawnerProtect extends Module {
     private boolean pathingToSpawner;
     private int pathTicks;
     private boolean protectGuiOwnerAcquired;
-    private boolean finalOrderCompleted;
-    private int finalOrderWaitTicks;
     private int sellCleanupAttempts;
     private int sellVerifyTicks;
 
@@ -376,8 +357,6 @@ public class KamiSpawnerProtect extends Module {
         pathingToSpawner = false;
         pathTicks = 0;
         protectGuiOwnerAcquired = false;
-        finalOrderCompleted = false;
-        finalOrderWaitTicks = 0;
         sellCleanupAttempts = 0;
         sellVerifyTicks = 0;
     }
@@ -398,7 +377,6 @@ public class KamiSpawnerProtect extends Module {
             case ARMED -> handleArmed();
             case SCAN_PLAYERS -> handleScanPlayers();
             case THREAT_CONFIRM -> handleThreatConfirm();
-            case WAIT_FINAL_ORDER -> handleWaitFinalOrder();
             case MOVE_TO_SPAWNER -> handleMoveToSpawner();
             case SWAP_PICKAXE -> handleSwapPickaxe();
             case START_SNEAK -> handleStartSneak();
@@ -472,7 +450,6 @@ public class KamiSpawnerProtect extends Module {
 
         PlayerEntity threat = findThreat();
         if (threat == null) {
-            KamiOrderBot.suppressNextSpawnerDrop = false;
             if (autoRunWithoutThreat.get()) {
                 if (!refreshTargetSpawner(true)) {
                     state = State.SCAN_PLAYERS;
@@ -499,73 +476,10 @@ public class KamiSpawnerProtect extends Module {
                 state = State.SCAN_PLAYERS;
                 return;
             }
-            if (shouldRunFinalOrderBeforeBreak()) {
-                beginFinalOrderCleanup();
-                return;
-            }
             if (!ensureProtectGuiOwner(true)) return;
             log("Xac nhan threat: " + threat.getName().getString() + " - cat Spawner " + targetSpawnerPos.toShortString() + ".");
             state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
         }
-    }
-
-    private void handleWaitFinalOrder() {
-        stopModuleByName("kami-spawner-drop");
-
-        Module order = getModuleByName("kami-order-bot");
-        if (order == null) {
-            warning("Khong tim thay KamiOrderBot de chay final order - Protect se tiep tuc neu lay duoc GUI.");
-            finalOrderCompleted = true;
-            state = State.THREAT_CONFIRM;
-            return;
-        }
-
-        if (!order.isActive()) {
-            KamiOrderBot.suppressNextSpawnerDrop = false;
-            cleanupStaleGuiAfterFinalOrder();
-            finalOrderCompleted = true;
-            finalOrderWaitTicks = 0;
-            log("Order lan cuoi da xong/khong con active - bat dau bao ve Spawner.");
-            state = State.THREAT_CONFIRM;
-            return;
-        }
-
-        finalOrderWaitTicks++;
-        if (finalOrderWaitTicks > finalOrderTimeout.get()) {
-            error("Timeout cho Order lan cuoi - khong dap Spawner de tranh mat do khi inventory con day.");
-            state = State.ERROR;
-        }
-    }
-
-    private boolean shouldRunFinalOrderBeforeBreak() {
-        return finalOrderBeforeBreak.get() && !finalOrderCompleted && findThreat() != null;
-    }
-
-    private void beginFinalOrderCleanup() {
-        releaseProtectGuiOwner();
-        stopModuleByName("kami-spawner-drop");
-        KamiOrderBot.suppressNextSpawnerDrop = true;
-        KamiOrderBot.resumeOrderAfterDrop = false;
-        KamiOrderBot.nextActivateIsResume = false;
-
-        Module order = getModuleByName("kami-order-bot");
-        if (order == null) {
-            warning("Khong tim thay KamiOrderBot de final order - bo qua buoc ban do.");
-            KamiOrderBot.suppressNextSpawnerDrop = false;
-            finalOrderCompleted = true;
-            state = State.THREAT_CONFIRM;
-            return;
-        }
-
-        if (!order.isActive()) {
-            order.toggle();
-            log("Threat confirmed - bat KamiOrderBot chay lan cuoi, Drop se bi chan.");
-        } else {
-            log("Threat confirmed - de KamiOrderBot chay not lan cuoi, Drop se bi chan.");
-        }
-
-        finalOrderWaitTicks = 0;
-        state = State.WAIT_FINAL_ORDER;
     }
 
     private void handleMoveToSpawner() {
@@ -1023,9 +937,6 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private void finish(String message) {
-        if (state == State.ERROR || state == State.COMPLETED) {
-            KamiOrderBot.suppressNextSpawnerDrop = false;
-        }
         if (State.ERROR.equals(state)) {
             restoreState();
             if (isContainerOpen() && ownsGui()) closeScreen();
@@ -1075,11 +986,6 @@ public class KamiSpawnerProtect extends Module {
             mc.player.closeHandledScreen();
             log("Da dong GUI cu bi treo truoc khi Protect thao tac.");
         }
-    }
-
-    private void cleanupStaleGuiAfterFinalOrder() {
-        cleanupStaleGuiBeforeProtect();
-        releaseProtectGuiOwner();
     }
 
     private void releaseProtectGuiOwner() {
@@ -1244,7 +1150,7 @@ public class KamiSpawnerProtect extends Module {
 
     private void stopOrderAndDropImmediately() {
         stopModuleByName("kami-spawner-drop");
-        if (!finalOrderBeforeBreak.get()) stopModuleByName("kami-order-bot");
+        stopModuleByName("kami-order-bot");
     }
 
     private void stopModuleByName(String name) {
@@ -1687,7 +1593,6 @@ public class KamiSpawnerProtect extends Module {
         ARMED,
         SCAN_PLAYERS,
         THREAT_CONFIRM,
-        WAIT_FINAL_ORDER,
         MOVE_TO_SPAWNER,
         SWAP_PICKAXE,
         START_SNEAK,

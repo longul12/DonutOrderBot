@@ -100,14 +100,6 @@ public class KamiSpawnerDrop extends Module {
         .build()
     );
 
-    private final Setting<Boolean> finalOrderDuringRespawn = sgGeneral.add(new BoolSetting.Builder()
-        .name("final-order-during-respawn")
-        .description("Khi cho respawn vi gap item la, bat Order mot lan de don item da drop/nhat.")
-        .defaultValue(true)
-        .visible(autoResumeOrder::get)
-        .build()
-    );
-
     private final Setting<Integer> delay = sgGeneral.add(new IntSetting.Builder()
         .name("delay")
         .description("Delay giua mo GUI / click / ESC (tick) + random nhe.")
@@ -652,10 +644,6 @@ public class KamiSpawnerDrop extends Module {
         respawnWaitTicks = 0;
         state = State.WAIT_RESPAWN;
         log("Auto respawn delay " + min + " phút (" + reason + ").");
-        if (finalOrderDuringRespawn.get()) {
-            log("Respawn delay vẫn chạy — bật Order cuối để dọn item vừa drop/nhặt.");
-            tryResumeOrderBot();
-        }
         return true;
     }
 
@@ -828,8 +816,7 @@ public class KamiSpawnerDrop extends Module {
         }
 
         if (!resume) {
-            log("Hết vòng Order — không bật lại Order.");
-            return;
+            log("Order khong con vong moi - van bat resume mot lan de ban het item neu vua nhat duoc.");
         }
 
         String name = orderModuleName.get();

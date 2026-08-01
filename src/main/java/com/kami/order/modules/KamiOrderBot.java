@@ -184,8 +184,6 @@ public class KamiOrderBot extends Module {
     public static volatile boolean resumeOrderAfterDrop = false;
     /** Lần bật Order tiếp theo là resume sau drop (không reset đếm vòng). */
     public static volatile boolean nextActivateIsResume = false;
-    /** SpawnerProtect yeu cau Order chay lan cuoi roi khong bat SpawnerDrop. */
-    public static volatile boolean suppressNextSpawnerDrop = false;
     /** Số phase order đã hoàn thành trong session hiện tại. */
     private static int cyclesCompleted = 0;
 
@@ -1694,22 +1692,19 @@ public class KamiOrderBot extends Module {
 
         cyclesCompleted++;
         int max = loopCount.get();
+        boolean shouldDropThisPhase = autoSpawnerDrop.get() && (max <= 0 || cyclesCompleted <= max);
         // Còn vòng? 0 = vô hạn; còn thì sau drop sẽ bật lại Order
-        boolean suppressDrop = suppressNextSpawnerDrop;
-        suppressNextSpawnerDrop = false;
-        boolean moreCycles = !suppressDrop && autoSpawnerDrop.get() && (max <= 0 || cyclesCompleted < max);
+        boolean moreCycles = autoSpawnerDrop.get() && (max <= 0 || cyclesCompleted < max);
 
         resumeOrderAfterDrop = moreCycles;
 
         log(reason + " — kết thúc phase order #" + cyclesCompleted
             + (max > 0 ? "/" + max : "")
-            + (autoSpawnerDrop.get()
+            + (shouldDropThisPhase
                 ? (moreCycles ? " → Drop rồi Order lại." : " → Drop lần cuối, hết vòng.")
                 : " — dừng."));
 
-        if (suppressDrop) {
-            log("SpawnerProtect yeu cau Order lan cuoi - KHONG bat SpawnerDrop.");
-        } else {
+        if (shouldDropThisPhase) {
             pendingSpawnerDrop = true;
             pendingSpawnerDropWaitTicks = 0;
             if (isContainerOpen()) closeScreen();
@@ -1717,6 +1712,7 @@ public class KamiOrderBot extends Module {
             scheduleDelay();
             return;
         }
+
         state = State.DONE;
     }
 
@@ -1748,12 +1744,6 @@ public class KamiOrderBot extends Module {
      * Tên mặc định: {@code kami-spawner-drop}.
      */
     private void tryActivateSpawnerDrop() {
-        if (suppressNextSpawnerDrop) {
-            suppressNextSpawnerDrop = false;
-            resumeOrderAfterDrop = false;
-            log("SpawnerProtect dang cho Order lan cuoi - bo qua bat SpawnerDrop.");
-            return;
-        }
         if (!autoSpawnerDrop.get()) return;
 
         // Điều kiện bắt buộc: trong người không có item order
