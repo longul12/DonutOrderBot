@@ -215,10 +215,10 @@ public class KamiSpawnerProtect extends Module {
 
     private final Setting<Double> detectionRange = sgThreat.add(new DoubleSetting.Builder()
         .name("detection-range")
-        .description("Ban kinh phat hien nguoi la quanh Spawner da luu.")
-        .defaultValue(8.0)
+        .description("Ban kinh phat hien nguoi la quanh Spawner da luu. Toi da slider 256 neu server gui entity.")
+        .defaultValue(64.0)
         .min(1.0)
-        .sliderRange(1.0, 32.0)
+        .sliderRange(1.0, 256.0)
         .build()
     );
 

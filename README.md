@@ -36,6 +36,8 @@ the Minecraft mods folder to avoid duplicate module registration.
 - Registers the existing `KamiSpawnerProtect` module.
 - `KamiSpawnerProtect` is registered as a separate module and should be enabled
   manually when protection is needed.
+- `KamiSpawnerProtect` detects unknown players around the saved spawner with a
+  default range of 64 blocks and a slider up to 256 blocks.
 - `KamiSpawnerProtect` can open `/sell`, quick-move sellable items twice per
   sell GUI, and repeat cleanup until no dropped items remain near the player
   before breaking a spawner.
@@ -92,7 +94,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.4.9.jar
+build/libs/kami-order-bot-0.5.0.jar
 ```
 
 ## Maintainer Release Build
@@ -112,8 +114,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.4.9.jar
-build/libs/kami-order-bot-0.4.9-obfuscated.jar
+build/libs/kami-order-bot-0.5.0.jar
+build/libs/kami-order-bot-0.5.0-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -153,10 +155,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.4.9` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work removes final-order cleanup paths and
-lets SpawnerDrop resume OrderBot so any newly collected target items are ordered
-until empty.
+Version `0.5.0` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work expands SpawnerProtect player detection
+to a 64-block default and 256-block slider range.
 
 ## Known Limitations
 
