@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.3.jar
+build/libs/kami-order-bot-0.5.4.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.3-obfuscated.jar
+build/libs/kami-order-bot-0.5.4-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -138,4 +138,6 @@ handlers, enum constants, and reflection.
   randomized module `delay`; it should shift-click all sellable inventory stacks
   into the sell GUI twice. Do not replace this with a Sell All/Dump All button
   click unless the server GUI flow is deliberately changed.
+- When SpawnerProtect takes over because of a threat, it may close an existing
+  OrderBot/SpawnerDrop GUI up to three times before acquiring GUI ownership.
 - There are no tests; build and in-game verification are both important.

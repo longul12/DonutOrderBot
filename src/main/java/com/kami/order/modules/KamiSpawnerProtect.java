@@ -58,6 +58,7 @@ public class KamiSpawnerProtect extends Module {
     private static final double MAX_ENDER_CHEST_RANGE = 10.0;
     private static final double MAX_ENDER_CHEST_RANGE_SQ = MAX_ENDER_CHEST_RANGE * MAX_ENDER_CHEST_RANGE;
     private static final double MAX_INTERACT_RANGE_SQ = 36.0;
+    private static final int FORCED_GUI_CLOSE_ATTEMPTS = 3;
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgThreat = settings.createGroup("Threat");
@@ -329,6 +330,7 @@ public class KamiSpawnerProtect extends Module {
     private boolean protectGuiOwnerAcquired;
     private int sellCleanupAttempts;
     private int sellVerifyTicks;
+    private int forcedGuiCloseAttempts;
 
     public KamiSpawnerProtect() {
         super(Categories.Misc, "kami-spawner-protect",
@@ -389,6 +391,7 @@ public class KamiSpawnerProtect extends Module {
         protectGuiOwnerAcquired = false;
         sellCleanupAttempts = 0;
         sellVerifyTicks = 0;
+        forcedGuiCloseAttempts = 0;
     }
 
     @EventHandler
@@ -980,25 +983,40 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private boolean ensureProtectGuiOwner(boolean stopPeersFirst) {
+        if (stopPeersFirst) stopOrderAndDropImmediately();
+
+        if (forcedGuiCloseAttempts > 0 && forcedGuiCloseAttempts < FORCED_GUI_CLOSE_ATTEMPTS) {
+            forceCloseGuiBeforeProtect();
+            return false;
+        }
+
         if (isContainerOpen()) {
+            releaseInactivePeerGuiOwners();
+            if (stopPeersFirst) {
+                forceCloseGuiBeforeProtect();
+                return false;
+            }
+
             cleanupStaleGuiBeforeProtect();
             if (isContainerOpen()) {
-                log("Dang doi GUI Order/Drop dong han truoc khi Protect thao tac.");
+                forceCloseGuiBeforeProtect();
                 return false;
             }
         }
         if (ownsGui()) {
             protectGuiOwnerAcquired = true;
+            forcedGuiCloseAttempts = 0;
             return true;
         }
-        if (stopPeersFirst) stopOrderAndDropImmediately();
+
         cleanupStaleGuiBeforeProtect();
         if (isContainerOpen()) {
-            log("Dang doi GUI cu dong han truoc khi lay GUI owner.");
+            forceCloseGuiBeforeProtect();
             return false;
         }
         if (KamiOrderBot.tryAcquireGuiOwner(GUI_OWNER_PROTECT)) {
             protectGuiOwnerAcquired = true;
+            forcedGuiCloseAttempts = 0;
             return true;
         }
         log("Dang cho GUI owner ranh (hien tai: " + KamiOrderBot.currentGuiOwner() + ").");
@@ -1006,13 +1024,12 @@ public class KamiSpawnerProtect extends Module {
     }
 
     private void cleanupStaleGuiBeforeProtect() {
+        releaseInactivePeerGuiOwners();
+
         Module order = getModuleByName("kami-order-bot");
         Module drop = getModuleByName("kami-spawner-drop");
         boolean orderActive = order != null && order.isActive();
         boolean dropActive = drop != null && drop.isActive();
-
-        if (!orderActive) KamiOrderBot.releaseGuiOwner(KamiOrderBot.GUI_OWNER_ORDER);
-        if (!dropActive) KamiOrderBot.releaseGuiOwner(KamiOrderBot.GUI_OWNER_SPAWNER);
 
         if (!orderActive && !dropActive && isContainerOpen() && mc.player != null) {
             mc.player.closeHandledScreen();
@@ -1020,10 +1037,30 @@ public class KamiSpawnerProtect extends Module {
         }
     }
 
+    private void releaseInactivePeerGuiOwners() {
+        Module order = getModuleByName("kami-order-bot");
+        Module drop = getModuleByName("kami-spawner-drop");
+        boolean orderActive = order != null && order.isActive();
+        boolean dropActive = drop != null && drop.isActive();
+
+        if (!orderActive) KamiOrderBot.releaseGuiOwner(KamiOrderBot.GUI_OWNER_ORDER);
+        if (!dropActive) KamiOrderBot.releaseGuiOwner(KamiOrderBot.GUI_OWNER_SPAWNER);
+    }
+
+    private void forceCloseGuiBeforeProtect() {
+        if (mc.player == null) return;
+        if (forcedGuiCloseAttempts < FORCED_GUI_CLOSE_ATTEMPTS) forcedGuiCloseAttempts++;
+        mc.player.closeHandledScreen();
+        log("Threat detected - ESC dong GUI truoc khi Protect thao tac ("
+            + forcedGuiCloseAttempts + "/" + FORCED_GUI_CLOSE_ATTEMPTS + ").");
+        scheduleFixedDelay(1);
+    }
+
     private void releaseProtectGuiOwner() {
         if (!protectGuiOwnerAcquired && !ownsGui()) return;
         KamiOrderBot.releaseGuiOwner(GUI_OWNER_PROTECT);
         protectGuiOwnerAcquired = false;
+        forcedGuiCloseAttempts = 0;
     }
 
     private boolean shouldWalkToTarget() {

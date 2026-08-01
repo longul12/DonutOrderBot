@@ -157,6 +157,16 @@
     repeats that shift-click pass twice per cleanup attempt. Version bumped to
     `0.5.3`.
 
+- Description: Force-close Order/Drop GUI before SpawnerProtect takeover.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: When a threat appears while OrderBot/SpawnerDrop owns a GUI,
+    SpawnerProtect now stops peers first, closes the open GUI up to three times
+    across ticks, then acquires GUI ownership before `/sell`, breaking, and
+    storing. Version bumped to `0.5.4`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -172,7 +182,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.3-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.4-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
