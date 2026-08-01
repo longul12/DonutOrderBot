@@ -106,6 +106,15 @@
     `NoLambdaFactoryException` when Meteor subscribes SpawnerDrop event handlers.
     Version bumped to `0.4.7`.
 
+- Description: Reduce OrderBot pause after post-confirm GUI reopen.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
+    `gradle.properties`
+  Notes: Added `fast-post-confirm-esc`, enabled by default. When the server
+    reopens the order GUI after confirm, OrderBot closes it and continues on the
+    next tick instead of waiting another delay window. Version bumped to `0.4.8`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -121,7 +130,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.4.7-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.4.8-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

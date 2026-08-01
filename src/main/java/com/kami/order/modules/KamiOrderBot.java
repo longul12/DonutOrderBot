@@ -320,6 +320,13 @@ public class KamiOrderBot extends Module {
         .build()
     );
 
+    private final Setting<Boolean> fastPostConfirmEsc = sgConfirm.add(new BoolSetting.Builder()
+        .name("fast-post-confirm-esc")
+        .description("ESC GUI order reopen va tiep tuc ngay tick sau, giam khung sau confirm.")
+        .defaultValue(true)
+        .build()
+    );
+
     private final Setting<Boolean> chatFeedback = sgDebug.add(new BoolSetting.Builder()
         .name("chat-feedback")
         .description("In thong bao chi tiet ra chat.")
@@ -825,7 +832,7 @@ public class KamiOrderBot extends Module {
             postConfirmReopenClosed = true;
             log("ESC thoát GUI order vừa mở lại sau confirm.");
             waitTicks = 0;
-            scheduleDelay();
+            if (!fastPostConfirmEsc.get()) scheduleDelay();
             return;
         }
 
@@ -833,7 +840,7 @@ public class KamiOrderBot extends Module {
             return;
         }
 
-        if (postConfirmReopenClosed && waitTicks < Math.max(2, delay.get() / 2)) {
+        if (postConfirmReopenClosed && !fastPostConfirmEsc.get() && waitTicks < Math.max(2, delay.get() / 2)) {
             return;
         }
 

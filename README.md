@@ -26,6 +26,8 @@ the Minecraft mods folder to avoid duplicate module registration.
 - Chooses orders by highest, lowest, or balanced scoring mode.
 - Deposits matching items with `SlotActionType.QUICK_MOVE`.
 - Confirms delivery with tooltip/color/fallback slot detection.
+- Can close the post-confirm reopened order GUI immediately with
+  `fast-post-confirm-esc`.
 - Can trigger `KamiSpawnerDrop` when target items are depleted.
 - Includes `KamiSpawnerDrop` for spawner GUI drop/sell automation, with optional
   repeat-after-wait looping.
@@ -88,7 +90,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.4.7.jar
+build/libs/kami-order-bot-0.4.8.jar
 ```
 
 ## Maintainer Release Build
@@ -108,8 +110,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.4.7.jar
-build/libs/kami-order-bot-0.4.7-obfuscated.jar
+build/libs/kami-order-bot-0.4.8.jar
+build/libs/kami-order-bot-0.4.8-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -149,10 +151,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.4.7` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work moves SpawnerDrop into
-`com.kami.order.modules` so Meteor Orbit can subscribe its tick listener without
-`NoLambdaFactoryException`.
+Version `0.4.8` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work adds `fast-post-confirm-esc` so
+OrderBot continues immediately after closing the post-confirm reopened order GUI.
 
 ## Known Limitations
 
