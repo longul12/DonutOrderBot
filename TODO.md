@@ -147,6 +147,16 @@
     per cleanup attempt and repeats until break safety checks pass. Version
     bumped to `0.5.1`.
 
+- Description: Use Sell All/Dump All twice for SpawnerProtect sell cleanup.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Added `sell-dump-slot` and `force-sell-dump-slot`. Protect now clicks
+    the Sell All/Dump All GUI button twice per `/sell` cleanup attempt and only
+    falls back to shift-click if no button slot can be resolved. Version bumped
+    to `0.5.2`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -162,7 +172,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.1-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.2-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

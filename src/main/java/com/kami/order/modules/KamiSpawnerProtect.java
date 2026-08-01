@@ -137,7 +137,7 @@ public class KamiSpawnerProtect extends Module {
 
     private final Setting<Boolean> autoSellBeforeBreak = sgGeneral.add(new BoolSetting.Builder()
         .name("auto-sell-before-break")
-        .description("Neu chua an toan thi mo /sell va shift-click do vao GUI de tao slot trong.")
+        .description("Neu chua an toan thi mo /sell va bam Sell All/Dump All de tao slot trong.")
         .defaultValue(true)
         .build()
     );
@@ -160,6 +160,24 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
+    private final Setting<Integer> sellDumpSlot = sgGeneral.add(new IntSetting.Builder()
+        .name("sell-dump-slot")
+        .description("Slot index nut Sell All/Dump All trong GUI /sell. Mac dinh 50.")
+        .defaultValue(50)
+        .range(0, 89)
+        .sliderRange(0, 60)
+        .visible(autoSellBeforeBreak::get)
+        .build()
+    );
+
+    private final Setting<Boolean> forceSellDumpSlot = sgGeneral.add(new BoolSetting.Builder()
+        .name("force-sell-dump-slot")
+        .description("true = bam sell-dump-slot neu slot co item. false = chi bam khi ten nut khop Sell All/Dump All.")
+        .defaultValue(true)
+        .visible(autoSellBeforeBreak::get)
+        .build()
+    );
+
     private final Setting<Integer> sellOpenDelay = sgGeneral.add(new IntSetting.Builder()
         .name("sell-open-delay")
         .description("So tick doi giua cac lan gui/mo GUI sell trong cleanup.")
@@ -172,7 +190,7 @@ public class KamiSpawnerProtect extends Module {
 
     private final Setting<Integer> sellCloseDelay = sgGeneral.add(new IntSetting.Builder()
         .name("sell-close-delay")
-        .description("So tick doi sau khi shift-click 2 luot truoc khi dong GUI sell.")
+        .description("So tick doi sau khi bam Sell All/Dump All 2 lan truoc khi dong GUI sell.")
         .defaultValue(1)
         .range(0, 20)
         .sliderRange(0, 10)
@@ -683,8 +701,16 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        int moved = quickMoveSellableItems(2);
-        log("Da shift-click 2 luot, tong " + moved + " stack vao GUI sell.");
+        int dumpSlot = resolveSellDumpSlot();
+        if (dumpSlot >= 0) {
+            clickSlot(dumpSlot, 0, SlotActionType.PICKUP);
+            clickSlot(dumpSlot, 0, SlotActionType.PICKUP);
+            log("Da bam Sell All/Dump All 2 lan o slot " + dumpSlot + ".");
+        } else {
+            int moved = quickMoveSellableItems(2);
+            warning("Khong tim thay nut Sell All/Dump All - fallback shift-click 2 luot, tong "
+                + moved + " stack.");
+        }
         sellVerifyTicks = 0;
         state = State.VERIFY_SELL_SPACE;
         scheduleFixedDelay(sellCloseDelay.get());
@@ -1415,6 +1441,41 @@ public class KamiSpawnerProtect extends Module {
             }
         }
         return moved;
+    }
+
+    private int resolveSellDumpSlot() {
+        if (mc.player == null || !ownsGui()) return -1;
+        ScreenHandler menu = mc.player.currentScreenHandler;
+        if (menu == null) return -1;
+
+        int configured = sellDumpSlot.get();
+        if (configured >= 0 && configured < menu.slots.size()) {
+            ItemStack stack = menu.slots.get(configured).getStack();
+            if (!stack.isEmpty()) {
+                if (forceSellDumpSlot.get() || isSellDumpButton(stack)) return configured;
+            }
+        }
+
+        int containerSlots = Math.max(0, menu.slots.size() - 36);
+        for (int i = 0; i < containerSlots; i++) {
+            ItemStack stack = menu.slots.get(i).getStack();
+            if (!stack.isEmpty() && isSellDumpButton(stack)) return i;
+        }
+        return -1;
+    }
+
+    private boolean isSellDumpButton(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        String name = stack.getName().getString().toLowerCase(Locale.ROOT);
+        return name.contains("sell all")
+            || name.contains("sellall")
+            || name.contains("dump all")
+            || name.contains("dumpall")
+            || name.contains("ban tat")
+            || name.contains("ban het")
+            || name.contains("ban all")
+            || name.contains("ban rac")
+            || name.contains("sell");
     }
 
     private boolean isSellableCleanupStack(ItemStack stack) {

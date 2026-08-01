@@ -38,9 +38,9 @@ the Minecraft mods folder to avoid duplicate module registration.
   manually when protection is needed.
 - `KamiSpawnerProtect` detects unknown players around the saved spawner with a
   default range of 64 blocks and a slider up to 256 blocks.
-- `KamiSpawnerProtect` can open `/sell`, quick-move sellable items twice per
-  sell GUI, and repeat cleanup until no dropped items remain near the player
-  before breaking a spawner.
+- `KamiSpawnerProtect` can open `/sell`, click the Sell All/Dump All button
+  twice per sell GUI, and repeat cleanup until no dropped items remain near the
+  player before breaking a spawner.
 - `KamiSpawnerProtect` has separate sell cleanup timing settings
   (`sell-open-delay`, `sell-close-delay`, `sell-pickup-wait`) so `/sell` can run
   faster than the module's normal action delay while still waiting for GUI sync.
@@ -97,7 +97,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.1.jar
+build/libs/kami-order-bot-0.5.2.jar
 ```
 
 ## Maintainer Release Build
@@ -117,8 +117,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.1.jar
-build/libs/kami-order-bot-0.5.1-obfuscated.jar
+build/libs/kami-order-bot-0.5.2.jar
+build/libs/kami-order-bot-0.5.2-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -158,10 +158,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.1` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work speeds up SpawnerProtect `/sell`
-cleanup with dedicated open, close, and post-close wait settings while keeping
-two quick-move passes per sell GUI.
+Version `0.5.2` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work changes SpawnerProtect `/sell` cleanup
+to click the Sell All/Dump All button twice per sell GUI, with shift-click only
+as a fallback if the button cannot be resolved.
 
 ## Known Limitations
 
