@@ -137,6 +137,16 @@
     256 blocks. Actual detection still depends on player entities being loaded
     by the client/server. Version bumped to `0.5.0`.
 
+- Description: Speed up SpawnerProtect sell cleanup before breaking.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Added fixed tick settings for sell open delay, sell close delay, and
+    post-close pickup wait. The sell GUI still quick-moves sellable stacks twice
+    per cleanup attempt and repeats until break safety checks pass. Version
+    bumped to `0.5.1`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -152,7 +162,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.0-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.1-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.0.jar
+build/libs/kami-order-bot-0.5.1.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.0-obfuscated.jar
+build/libs/kami-order-bot-0.5.1-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -133,4 +133,8 @@ handlers, enum constants, and reflection.
 - `MouseLockMixin` only cancels `Mouse.lockCursor` while a bot is running; it must
   remain free of cursor positioning calls.
 - Fabric metadata uses Gradle resource expansion for `${version}`.
+- SpawnerProtect `/sell` cleanup intentionally uses its own fixed tick waits
+  (`sell-open-delay`, `sell-close-delay`, `sell-pickup-wait`) instead of the
+  randomized module `delay`; keep the two quick-move passes unless replacing the
+  sell flow end to end.
 - There are no tests; build and in-game verification are both important.

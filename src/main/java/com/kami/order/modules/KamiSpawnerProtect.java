@@ -160,6 +160,36 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
+    private final Setting<Integer> sellOpenDelay = sgGeneral.add(new IntSetting.Builder()
+        .name("sell-open-delay")
+        .description("So tick doi giua cac lan gui/mo GUI sell trong cleanup.")
+        .defaultValue(1)
+        .range(0, 20)
+        .sliderRange(0, 10)
+        .visible(autoSellBeforeBreak::get)
+        .build()
+    );
+
+    private final Setting<Integer> sellCloseDelay = sgGeneral.add(new IntSetting.Builder()
+        .name("sell-close-delay")
+        .description("So tick doi sau khi shift-click 2 luot truoc khi dong GUI sell.")
+        .defaultValue(1)
+        .range(0, 20)
+        .sliderRange(0, 10)
+        .visible(autoSellBeforeBreak::get)
+        .build()
+    );
+
+    private final Setting<Integer> sellPickupWait = sgGeneral.add(new IntSetting.Builder()
+        .name("sell-pickup-wait")
+        .description("So tick doi sau khi dong GUI sell de server cap nhat slot/item duoi dat.")
+        .defaultValue(3)
+        .range(0, 40)
+        .sliderRange(0, 20)
+        .visible(autoSellBeforeBreak::get)
+        .build()
+    );
+
     private final Setting<Integer> maxGroundItemsBeforeBreak = sgGeneral.add(new IntSetting.Builder()
         .name("max-ground-items-before-break")
         .description("Khong dap Spawner neu quanh chan co nhieu item entity hon muc nay.")
@@ -614,7 +644,7 @@ public class KamiSpawnerProtect extends Module {
         log(reason + " Mo /sell de don do truoc khi dap Spawner (lan "
             + sellCleanupAttempts + "/" + sellCleanupAttemptsMax.get() + ").");
         state = State.OPEN_SELL_GUI;
-        scheduleDelay();
+        scheduleFixedDelay(sellOpenDelay.get());
     }
 
     private void handleOpenSellGui() {
@@ -643,7 +673,7 @@ public class KamiSpawnerProtect extends Module {
             state = State.ERROR;
             return;
         }
-        scheduleDelay();
+        scheduleFixedDelay(sellOpenDelay.get());
     }
 
     private void handleSellItems() {
@@ -657,20 +687,22 @@ public class KamiSpawnerProtect extends Module {
         log("Da shift-click 2 luot, tong " + moved + " stack vao GUI sell.");
         sellVerifyTicks = 0;
         state = State.VERIFY_SELL_SPACE;
-        scheduleDelay();
+        scheduleFixedDelay(sellCloseDelay.get());
     }
 
     private void handleVerifySellSpace() {
         sellVerifyTicks++;
+        int closeAfterTicks = Math.max(0, sellCloseDelay.get());
+        int verifyAfterTicks = closeAfterTicks + Math.max(0, sellPickupWait.get());
 
-        if (isContainerOpen() && sellVerifyTicks >= 2) {
-            closeScreen();
-            scheduleDelay();
+        if (isContainerOpen()) {
+            if (sellVerifyTicks >= closeAfterTicks) closeScreen();
+            scheduleFixedDelay(1);
             return;
         }
 
-        if (sellVerifyTicks < 10) {
-            scheduleDelay();
+        if (sellVerifyTicks < verifyAfterTicks) {
+            scheduleFixedDelay(1);
             return;
         }
 
@@ -1559,6 +1591,10 @@ public class KamiSpawnerProtect extends Module {
         int base = Math.max(1, delay.get());
         int jitter = ThreadLocalRandom.current().nextInt(0, Math.max(2, base / 3 + 1));
         cooldown = base + jitter;
+    }
+
+    private void scheduleFixedDelay(int ticks) {
+        cooldown = Math.max(0, ticks);
     }
 
     private void log(String msg) {

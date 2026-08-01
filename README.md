@@ -41,6 +41,9 @@ the Minecraft mods folder to avoid duplicate module registration.
 - `KamiSpawnerProtect` can open `/sell`, quick-move sellable items twice per
   sell GUI, and repeat cleanup until no dropped items remain near the player
   before breaking a spawner.
+- `KamiSpawnerProtect` has separate sell cleanup timing settings
+  (`sell-open-delay`, `sell-close-delay`, `sell-pickup-wait`) so `/sell` can run
+  faster than the module's normal action delay while still waiting for GUI sync.
 - Includes GUI ownership guards shared with SpawnerDrop.
 - Includes a `MouseLockMixin` that prevents Minecraft from grabbing the mouse
   while a bot is running. It does not warp or click the system cursor.
@@ -94,7 +97,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.0.jar
+build/libs/kami-order-bot-0.5.1.jar
 ```
 
 ## Maintainer Release Build
@@ -114,8 +117,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.0.jar
-build/libs/kami-order-bot-0.5.0-obfuscated.jar
+build/libs/kami-order-bot-0.5.1.jar
+build/libs/kami-order-bot-0.5.1-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -155,9 +158,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.0` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work expands SpawnerProtect player detection
-to a 64-block default and 256-block slider range.
+Version `0.5.1` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work speeds up SpawnerProtect `/sell`
+cleanup with dedicated open, close, and post-close wait settings while keeping
+two quick-move passes per sell GUI.
 
 ## Known Limitations
 
