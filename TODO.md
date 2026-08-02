@@ -167,17 +167,6 @@
     across ticks, then acquires GUI ownership before `/sell`, breaking, and
     storing. Version bumped to `0.5.4`.
 
-- Description: Restore final Order before SpawnerDrop respawn wait.
-  Priority: High
-  Status: Completed
-  Files: `src/main/java/com/kami/order/modules/KamiSpawnerDrop.java`,
-    `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
-    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
-  Notes: When SpawnerDrop sees a stop item, it stops dropping, closes the GUI,
-    checks whether OrderBot still has target items in inventory, runs Order once
-    if needed, and then waits for respawn without OrderBot enabling Drop again.
-    Version bumped to `0.5.5`.
-
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -193,7 +182,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.5-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.4-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

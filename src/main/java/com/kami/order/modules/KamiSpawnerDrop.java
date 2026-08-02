@@ -61,7 +61,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<Integer> dropTimes = sgGeneral.add(new IntSetting.Builder()
         .name("drop-times")
-        .description("So lan lap: mo -> drop -> ESC. Co the go so lon truc tiep.")
+        .description("So lan lap: mo -> drop -> (sell) -> ESC. Co the go so lon truc tiep.")
         .defaultValue(3)
         .range(1, Integer.MAX_VALUE)
         .sliderRange(1, 256)
@@ -149,7 +149,7 @@ public class KamiSpawnerDrop extends Module {
 
     private final Setting<List<Item>> stopItems = sgSafety.add(new ItemListSetting.Builder()
         .name("stop-items")
-        .description("Item la / khong can trong GUI. Thay -> Order lan cuoi neu con item roi cho respawn.")
+        .description("Item la / khong can trong GUI. Thay -> Sell All 1 lan roi tu cho respawn.")
         .defaultValue(List.of(
             Items.ARROW,
             Items.GLOWSTONE_DUST,
@@ -184,7 +184,7 @@ public class KamiSpawnerDrop extends Module {
      */
     private final Setting<Integer> respawnDelayMin = sgSafety.add(new IntSetting.Builder()
         .name("respawn-delay-min")
-        .description("Phut cho respawn sau item la/Order lan cuoi. 0 = khong cho.")
+        .description("Phut cho respawn - tu bat sau khi Sell All 1 lan vi item la. 0 = khong cho.")
         .defaultValue(1)
         .range(0, 120)
         .sliderRange(0, 30)
@@ -216,6 +216,31 @@ public class KamiSpawnerDrop extends Module {
         .build()
     );
 
+    private final Setting<Boolean> enableSell = sgSlot.add(new BoolSetting.Builder()
+        .name("enable-sell")
+        .description("Gap item la -> Sell All 1 lan roi auto respawn delay. Tat = gap item la thi dung.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Integer> sellSlot = sgSlot.add(new IntSetting.Builder()
+        .name("sell-slot")
+        .description("Slot index nut Sell All (0-based). Mac dinh 50.")
+        .defaultValue(50)
+        .range(0, 89)
+        .sliderRange(0, 60)
+        .visible(enableSell::get)
+        .build()
+    );
+
+    private final Setting<Boolean> forceSellSlot = sgSlot.add(new BoolSetting.Builder()
+        .name("force-sell-slot")
+        .description("true = luon click sell-slot neu khong trong. false = chi click khi tooltip khop ban/sell.")
+        .defaultValue(true)
+        .visible(enableSell::get)
+        .build()
+    );
+
     private final Setting<Boolean> chatFeedback = sgDebug.add(new BoolSetting.Builder()
         .name("chat-feedback")
         .description("In thong bao chi tiet.")
@@ -238,7 +263,7 @@ public class KamiSpawnerDrop extends Module {
         CLICK_DROP,
         CHECK_AFTER_DROP,
         /** Sell All đúng 1 lần vì item lạ → rồi ESC + respawn delay */
-        WAIT_FINAL_ORDER,
+        CLICK_SELL_JUNK,
         CLOSE_GUI,
         WAIT_RESPAWN,
         WAIT_LOOP_RESTART,
@@ -268,7 +293,7 @@ public class KamiSpawnerDrop extends Module {
 
     public KamiSpawnerDrop() {
         super(Categories.Misc, "kami-spawner-drop",
-            "Auto Drop Spawner: unknown item -> final Order + auto respawn delay.");
+            "Auto Drop Spawner: unknown item -> Sell All once + auto respawn delay.");
     }
 
     public static boolean shouldPreventMouseLock() {
@@ -306,6 +331,7 @@ public class KamiSpawnerDrop extends Module {
             + " | target=" + targetSpawnerPos.toShortString()
             + " | stop-items=" + stopItems.get().size()
             + " | drop=" + dropSlot.get()
+            + (enableSell.get() ? " | sell-all×1 slot=" + sellSlot.get() : " | sell=off")
             + " | respawn=" + respawnDelayMin.get() + "p (Safety)");
     }
 
@@ -361,11 +387,6 @@ public class KamiSpawnerDrop extends Module {
             return;
         }
 
-        if (state == State.WAIT_FINAL_ORDER) {
-            handleWaitFinalOrder();
-            return;
-        }
-
         if (state == State.DONE) {
             finishDropRun();
             return;
@@ -385,7 +406,7 @@ public class KamiSpawnerDrop extends Module {
             case CHECK_BEFORE_DROP -> handleCheckBeforeDrop();
             case CLICK_DROP -> handleClickDrop();
             case CHECK_AFTER_DROP -> handleCheckAfterDrop();
-            case WAIT_FINAL_ORDER -> handleWaitFinalOrder();
+            case CLICK_SELL_JUNK -> handleClickSellJunk();
             case CLOSE_GUI -> handleCloseGui();
             case WAIT_RESPAWN -> handleWaitRespawn();
             case WAIT_LOOP_RESTART -> handleWaitLoopRestart();
@@ -538,13 +559,51 @@ public class KamiSpawnerDrop extends Module {
     private void handleJunkFound(Item junk, String phase) {
         String id = Registries.ITEM.getId(junk).getPath();
 
-        log("[SpawnerDrop] Item la " + id + " (" + phase + ") - dung drop, Order lan cuoi neu con item.");
-        soldThisCycle = true;
-        stoppedByBannedItem = false;
-        remainingDrops = Math.max(0, remainingDrops - 1);
-        scannedThisGui = false;
-        if (isContainerOpen()) closeScreen();
-        beginFinalOrderOrRespawn("item la " + id);
+        if (!enableSell.get()) {
+            error("[SpawnerDrop] Item lạ " + id + " (" + phase + ") — enable-sell=off → dừng.");
+            closeScreen();
+            stoppedByBannedItem = true;
+            remainingDrops = 0;
+            state = State.DONE;
+            return;
+        }
+
+        // Đã sell 1 lần trong vòng này rồi mà vẫn còn item lạ → không sell lại, đóng + respawn
+        if (soldThisCycle) {
+            log("[SpawnerDrop] Còn item lạ " + id + " sau Sell All ×1 — ESC + respawn delay.");
+            state = State.CLOSE_GUI;
+            scheduleDelay();
+            return;
+        }
+
+        log("[SpawnerDrop] Item lạ " + id + " (" + phase + ") → Sell All ×1 slot " + sellSlot.get() + ".");
+        state = State.CLICK_SELL_JUNK;
+        scheduleDelay();
+    }
+
+    private void handleClickSellJunk() {
+        if (!isContainerOpen()) {
+            warning("GUI đóng trước khi Sell All — mở lại.");
+            state = State.IDLE_WAIT_LOOK;
+            scheduleDelay();
+            return;
+        }
+
+        int slot = resolveSellSlot();
+        if (slot < 0) {
+            error("Không click được Sell All (slot " + sellSlot.get() + "). Chỉnh sell-slot.");
+            closeScreen();
+            stoppedByBannedItem = true;
+            remainingDrops = 0;
+            state = State.DONE;
+            scheduleDelay();
+            return;
+        }
+
+        clickSlot(slot, 0, SlotActionType.PICKUP);
+        soldThisCycle = true; // đánh dấu → đóng GUI sẽ tự bật respawn delay
+        log("Đã Sell All ×1 → slot " + slot + " — ESC rồi auto respawn delay.");
+        state = State.CLOSE_GUI;
         scheduleDelay();
     }
 
@@ -559,7 +618,7 @@ public class KamiSpawnerDrop extends Module {
         log("Còn " + remainingDrops + " lần.");
 
         // Sell All 1 lần vì item lạ → luôn tự bật respawn delay (nếu > 0)
-        if (soldThisCycle && beginRespawnWait("sau item la")) {
+        if (soldThisCycle && beginRespawnWait(remainingDrops <= 0 ? "sau sell (vòng cuối)" : "sau sell All ×1")) {
             return;
         }
 
@@ -618,80 +677,6 @@ public class KamiSpawnerDrop extends Module {
         if (respawnWaitTicks % (30 * 20) == 0) {
             int leftSec = Math.max(0, (respawnTotalTicks - respawnWaitTicks) / 20);
             log("Respawn... còn ~" + leftSec + "s");
-        }
-    }
-
-    private void beginFinalOrderOrRespawn(String reason) {
-        if (!autoResumeOrder.get()) {
-            beginRespawnAfterJunk(reason + ", auto-resume-order=off");
-            return;
-        }
-
-        Module order = findModuleByName(resolveOrderModuleName());
-        if (order instanceof KamiOrderBot orderBot && orderBot.hasOrderItemsForDropResume()) {
-            KamiOrderBot.resumeOrderAfterDrop = false;
-            KamiOrderBot.finalOrderBeforeRespawnComplete = false;
-            KamiOrderBot.finalOrderBeforeRespawnRequested = true;
-            KamiOrderBot.nextActivateIsResume = true;
-
-            releaseGuiOwner();
-            if (order.isActive()) {
-                log("Order dang bat san - restart de chay Order lan cuoi truoc respawn.");
-                order.toggle();
-            }
-            order.toggle();
-            if (order.isActive()) {
-                log("Da bat Order lan cuoi sau khi Drop gap " + reason + ".");
-                waitTicks = 0;
-                state = State.WAIT_FINAL_ORDER;
-                return;
-            }
-            warning("Khong bat duoc Order lan cuoi - chuyen sang cho respawn.");
-        } else {
-            log("Khong con item order trong nguoi - bo qua Order lan cuoi.");
-        }
-
-        beginRespawnAfterJunk(reason);
-    }
-
-    private void handleWaitFinalOrder() {
-        if (ownsGui() && isContainerOpen()) closeScreen();
-
-        Module order = findModuleByName(resolveOrderModuleName());
-        if (KamiOrderBot.finalOrderBeforeRespawnComplete) {
-            KamiOrderBot.finalOrderBeforeRespawnComplete = false;
-            KamiOrderBot.finalOrderBeforeRespawnRequested = false;
-            log("Order lan cuoi da het item - bat dau cho respawn.");
-            beginRespawnAfterJunk("sau Order lan cuoi vi item la");
-            return;
-        }
-
-        if (order == null || !order.isActive()) {
-            warning("Order lan cuoi da dung nhung chua bao hoan tat - cho respawn de tranh ket.");
-            KamiOrderBot.finalOrderBeforeRespawnRequested = false;
-            beginRespawnAfterJunk("sau Order lan cuoi dung som");
-            return;
-        }
-
-        waitTicks++;
-        if (waitTicks % (30 * 20) == 0) {
-            log("Dang cho Order lan cuoi ban het item truoc respawn...");
-        }
-    }
-
-    private String resolveOrderModuleName() {
-        String name = orderModuleName.get();
-        if (name == null || name.isBlank()) return "kami-order-bot";
-        return name.trim();
-    }
-
-    private void beginRespawnAfterJunk(String reason) {
-        if (beginRespawnWait(reason)) return;
-        soldThisCycle = false;
-        if (remainingDrops <= 0) {
-            state = State.DONE;
-        } else {
-            state = State.IDLE_WAIT_LOOK;
         }
     }
 
@@ -775,7 +760,7 @@ public class KamiSpawnerDrop extends Module {
             ItemStack stack = menu.slots.get(i).getStack();
             if (stack.isEmpty()) continue;
 
-            if (isDropAllButton(stack) || isUiControlSlot(stack)) continue;
+            if (isDropAllButton(stack) || isSellButton(stack) || isUiControlSlot(stack)) continue;
 
             Item it = stack.getItem();
             if (!banned.contains(it)) continue;
@@ -924,6 +909,29 @@ public class KamiSpawnerDrop extends Module {
         return -1;
     }
 
+    private int resolveSellSlot() {
+        ScreenHandler menu = mc.player.currentScreenHandler;
+        if (menu == null) return -1;
+        int configured = sellSlot.get();
+
+        if (configured >= 0 && configured < menu.slots.size()) {
+            ItemStack stack = menu.slots.get(configured).getStack();
+            if (forceSellSlot.get()) {
+                if (stack.isEmpty()) return -1;
+                return configured;
+            }
+            if (!stack.isEmpty() && isSellButton(stack)) return configured;
+        }
+
+        // Fallback: quét tooltip bán/sell
+        int containerSlots = Math.max(0, menu.slots.size() - 36);
+        for (int i = 0; i < containerSlots; i++) {
+            ItemStack stack = menu.slots.get(i).getStack();
+            if (!stack.isEmpty() && isSellButton(stack)) return i;
+        }
+        return -1;
+    }
+
     private boolean isDropAllButton(ItemStack stack) {
         String all = collectText(stack).toLowerCase(Locale.ROOT);
         return all.contains("vứt hết")
@@ -933,6 +941,25 @@ public class KamiSpawnerDrop extends Module {
             || all.contains("vứt hết ra đất")
             || all.contains("bấm vào để vứt")
             || all.contains("bam vao de vut");
+    }
+
+    private boolean isSellButton(ItemStack stack) {
+        String all = collectText(stack).toLowerCase(Locale.ROOT);
+        // Tránh nhầm với drop
+        if (isDropAllButton(stack)) return false;
+        return all.contains("sell all")
+            || all.contains("sellall")
+            || all.contains("bán tất")
+            || all.contains("ban tat")
+            || all.contains("bán hết")
+            || all.contains("ban het")
+            || all.contains("bán rác")
+            || all.contains("ban rac")
+            || all.contains("bán all")
+            || all.contains("ban all")
+            || all.contains("bán")
+            || all.contains("sell")
+            || all.contains("shop");
     }
 
     private void dumpContainerSlots() {
@@ -946,6 +973,7 @@ public class KamiSpawnerDrop extends Module {
             int col = i % 9 + 1;
             String mark = "";
             if (isDropAllButton(stack)) mark += " << DROP";
+            if (isSellButton(stack)) mark += " << SELL";
             if (stopItems.get().contains(stack.getItem())) {
                 if (!(stack.isOf(Items.ARROW) && stack.getCount() < arrowStopMinCount.get())) {
                     mark += " << BANNED";
@@ -1112,7 +1140,7 @@ public class KamiSpawnerDrop extends Module {
         return switch (state) {
             case CHECK_BEFORE_DROP -> "pre-check";
             case CHECK_AFTER_DROP -> "post-check";
-            case WAIT_FINAL_ORDER -> "final order";
+            case CLICK_SELL_JUNK -> "sell×1";
             default -> "s" + dropSlot.get() + (remainingDrops > 0 ? " x" + remainingDrops : "");
         };
     }

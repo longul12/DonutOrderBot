@@ -184,8 +184,6 @@ public class KamiOrderBot extends Module {
     public static volatile boolean resumeOrderAfterDrop = false;
     /** Lần bật Order tiếp theo là resume sau drop (không reset đếm vòng). */
     public static volatile boolean nextActivateIsResume = false;
-    public static volatile boolean finalOrderBeforeRespawnRequested = false;
-    public static volatile boolean finalOrderBeforeRespawnComplete = false;
     /** Số phase order đã hoàn thành trong session hiện tại. */
     private static int cyclesCompleted = 0;
 
@@ -1692,16 +1690,6 @@ public class KamiOrderBot extends Module {
             return;
         }
 
-        if (finalOrderBeforeRespawnRequested) {
-            finalOrderBeforeRespawnRequested = false;
-            finalOrderBeforeRespawnComplete = true;
-            resumeOrderAfterDrop = false;
-            nextActivateIsResume = false;
-            log(reason + " - hoan tat Order lan cuoi truoc respawn, khong bat Drop lai.");
-            state = State.DONE;
-            return;
-        }
-
         cyclesCompleted++;
         int max = loopCount.get();
         boolean shouldDropThisPhase = autoSpawnerDrop.get() && (max <= 0 || cyclesCompleted <= max);
@@ -1748,10 +1736,6 @@ public class KamiOrderBot extends Module {
             if (!s.isEmpty() && stackMatchesOrderFilter(s, want)) total += s.getCount();
         }
         return total;
-    }
-
-    public boolean hasOrderItemsForDropResume() {
-        return hasOrderItemsOnPlayer();
     }
 
     /**

@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.5.jar
+build/libs/kami-order-bot-0.5.4.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.5-obfuscated.jar
+build/libs/kami-order-bot-0.5.4-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -140,8 +140,4 @@ handlers, enum constants, and reflection.
   click unless the server GUI flow is deliberately changed.
 - When SpawnerProtect takes over because of a threat, it may close an existing
   OrderBot/SpawnerDrop GUI up to three times before acquiring GUI ownership.
-- SpawnerDrop stop-item handling uses a final Order handoff. It sets
-  `KamiOrderBot.finalOrderBeforeRespawnRequested`, releases GUI ownership, waits
-  for `finalOrderBeforeRespawnComplete`, then enters respawn wait. OrderBot must
-  not enable SpawnerDrop again in this final-order path.
 - There are no tests; build and in-game verification are both important.
