@@ -97,7 +97,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.4.jar
+build/libs/kami-order-bot-0.5.5.jar
 ```
 
 ## Maintainer Release Build
@@ -117,8 +117,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.4.jar
-build/libs/kami-order-bot-0.5.4-obfuscated.jar
+build/libs/kami-order-bot-0.5.5.jar
+build/libs/kami-order-bot-0.5.5-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -158,10 +158,11 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.4` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work keeps SpawnerProtect `/sell` cleanup on
-the intended shift-click-all flow and adds forced GUI close attempts before
-SpawnerProtect takes over from OrderBot/SpawnerDrop during threat handling.
+Version `0.5.5` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified work restores SpawnerDrop final Order after
+Sell All on stop-item detection: Drop sells the junk once, runs Order one final
+time if target items remain in inventory, then waits for respawn without Order
+re-enabling Drop.
 
 ## Known Limitations
 

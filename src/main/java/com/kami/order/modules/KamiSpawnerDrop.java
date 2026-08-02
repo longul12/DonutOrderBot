@@ -264,6 +264,7 @@ public class KamiSpawnerDrop extends Module {
         CHECK_AFTER_DROP,
         /** Sell All đúng 1 lần vì item lạ → rồi ESC + respawn delay */
         CLICK_SELL_JUNK,
+        WAIT_FINAL_ORDER,
         CLOSE_GUI,
         WAIT_RESPAWN,
         WAIT_LOOP_RESTART,
@@ -387,6 +388,11 @@ public class KamiSpawnerDrop extends Module {
             return;
         }
 
+        if (state == State.WAIT_FINAL_ORDER) {
+            handleWaitFinalOrder();
+            return;
+        }
+
         if (state == State.DONE) {
             finishDropRun();
             return;
@@ -407,6 +413,7 @@ public class KamiSpawnerDrop extends Module {
             case CLICK_DROP -> handleClickDrop();
             case CHECK_AFTER_DROP -> handleCheckAfterDrop();
             case CLICK_SELL_JUNK -> handleClickSellJunk();
+            case WAIT_FINAL_ORDER -> handleWaitFinalOrder();
             case CLOSE_GUI -> handleCloseGui();
             case WAIT_RESPAWN -> handleWaitRespawn();
             case WAIT_LOOP_RESTART -> handleWaitLoopRestart();
@@ -618,7 +625,8 @@ public class KamiSpawnerDrop extends Module {
         log("Còn " + remainingDrops + " lần.");
 
         // Sell All 1 lần vì item lạ → luôn tự bật respawn delay (nếu > 0)
-        if (soldThisCycle && beginRespawnWait(remainingDrops <= 0 ? "sau sell (vòng cuối)" : "sau sell All ×1")) {
+        if (soldThisCycle) {
+            beginFinalOrderOrRespawn(remainingDrops <= 0 ? "sau sell (vong cuoi)" : "sau Sell All item la");
             return;
         }
 
@@ -677,6 +685,80 @@ public class KamiSpawnerDrop extends Module {
         if (respawnWaitTicks % (30 * 20) == 0) {
             int leftSec = Math.max(0, (respawnTotalTicks - respawnWaitTicks) / 20);
             log("Respawn... còn ~" + leftSec + "s");
+        }
+    }
+
+    private void beginFinalOrderOrRespawn(String reason) {
+        if (!autoResumeOrder.get()) {
+            beginRespawnAfterJunk(reason + ", auto-resume-order=off");
+            return;
+        }
+
+        Module order = findModuleByName(resolveOrderModuleName());
+        if (order instanceof KamiOrderBot orderBot && orderBot.hasOrderItemsForDropResume()) {
+            KamiOrderBot.resumeOrderAfterDrop = false;
+            KamiOrderBot.finalOrderBeforeRespawnComplete = false;
+            KamiOrderBot.finalOrderBeforeRespawnRequested = true;
+            KamiOrderBot.nextActivateIsResume = true;
+
+            releaseGuiOwner();
+            if (order.isActive()) {
+                log("Order dang bat san - restart de chay Order lan cuoi truoc respawn.");
+                order.toggle();
+            }
+            order.toggle();
+            if (order.isActive()) {
+                log("Da bat Order lan cuoi sau khi Sell All vi item la.");
+                waitTicks = 0;
+                state = State.WAIT_FINAL_ORDER;
+                return;
+            }
+            warning("Khong bat duoc Order lan cuoi - chuyen sang cho respawn.");
+        } else {
+            log("Khong con item order trong nguoi - bo qua Order lan cuoi.");
+        }
+
+        beginRespawnAfterJunk(reason);
+    }
+
+    private void handleWaitFinalOrder() {
+        if (ownsGui() && isContainerOpen()) closeScreen();
+
+        Module order = findModuleByName(resolveOrderModuleName());
+        if (KamiOrderBot.finalOrderBeforeRespawnComplete) {
+            KamiOrderBot.finalOrderBeforeRespawnComplete = false;
+            KamiOrderBot.finalOrderBeforeRespawnRequested = false;
+            log("Order lan cuoi da het item - bat dau cho respawn.");
+            beginRespawnAfterJunk("sau Order lan cuoi vi item la");
+            return;
+        }
+
+        if (order == null || !order.isActive()) {
+            warning("Order lan cuoi da dung nhung chua bao hoan tat - cho respawn de tranh ket.");
+            KamiOrderBot.finalOrderBeforeRespawnRequested = false;
+            beginRespawnAfterJunk("sau Order lan cuoi dung som");
+            return;
+        }
+
+        waitTicks++;
+        if (waitTicks % (30 * 20) == 0) {
+            log("Dang cho Order lan cuoi ban het item truoc respawn...");
+        }
+    }
+
+    private String resolveOrderModuleName() {
+        String name = orderModuleName.get();
+        if (name == null || name.isBlank()) return "kami-order-bot";
+        return name.trim();
+    }
+
+    private void beginRespawnAfterJunk(String reason) {
+        if (beginRespawnWait(reason)) return;
+        soldThisCycle = false;
+        if (remainingDrops <= 0) {
+            state = State.DONE;
+        } else {
+            state = State.IDLE_WAIT_LOOK;
         }
     }
 
@@ -1141,6 +1223,7 @@ public class KamiSpawnerDrop extends Module {
             case CHECK_BEFORE_DROP -> "pre-check";
             case CHECK_AFTER_DROP -> "post-check";
             case CLICK_SELL_JUNK -> "sell×1";
+            case WAIT_FINAL_ORDER -> "final order";
             default -> "s" + dropSlot.get() + (remainingDrops > 0 ? " x" + remainingDrops : "");
         };
     }
