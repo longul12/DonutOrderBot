@@ -95,6 +95,11 @@ public class KamiOrderBot extends Module {
         Auto_Balanced
     }
 
+    public enum OrderTargetMode {
+        Single_Player,
+        Player_List
+    }
+
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgFilter = settings.createGroup("Order Filter");
     private final SettingGroup sgConfirm = settings.createGroup("Confirm Slot");
@@ -107,6 +112,13 @@ public class KamiOrderBot extends Module {
         .build()
     );
 
+    private final Setting<OrderTargetMode> orderTargetMode = sgGeneral.add(new EnumSetting.Builder<OrderTargetMode>()
+        .name("order-target-mode")
+        .description("Single_Player dung order-player-name. Player_List order tung name trong danh sach.")
+        .defaultValue(OrderTargetMode.Single_Player)
+        .build()
+    );
+
     /**
      * Tên người chơi gửi /order &lt;name&gt;.
      * Để trống = dùng tên item (hành vi cũ).
@@ -115,6 +127,25 @@ public class KamiOrderBot extends Module {
         .name("order-player-name")
         .description("Ten nguoi choi: /order <ten>. De trong thi /order theo ten item.")
         .defaultValue("")
+        .visible(() -> orderTargetMode.get() == OrderTargetMode.Single_Player)
+        .build()
+    );
+
+    private final Setting<List<String>> orderPlayerList = sgGeneral.add(new StringListSetting.Builder()
+        .name("order-player-list")
+        .description("Danh sach player de /order, moi dong la mot ten.")
+        .defaultValue(List.of())
+        .visible(() -> orderTargetMode.get() == OrderTargetMode.Player_List)
+        .build()
+    );
+
+    private final Setting<Integer> ordersPerPlayer = sgGeneral.add(new IntSetting.Builder()
+        .name("orders-per-player")
+        .description("So order hoan tat cho moi player trong order-player-list.")
+        .defaultValue(1)
+        .range(1, 999)
+        .sliderRange(1, 20)
+        .visible(() -> orderTargetMode.get() == OrderTargetMode.Player_List)
         .build()
     );
 
@@ -371,6 +402,8 @@ public class KamiOrderBot extends Module {
     private boolean pendingSpawnerDrop = false;
     private int pendingSpawnerDropWaitTicks = 0;
     private boolean postConfirmReopenClosed = false;
+    private int currentOrderPlayerIndex = 0;
+    private int ordersDoneForCurrentPlayer = 0;
 
     /** 27 stack × 64 = 1 shulker đầy */
     private static final int ITEMS_PER_FILL = 1728;
@@ -433,6 +466,11 @@ public class KamiOrderBot extends Module {
 
         String cmdArg = getOrderCommandArg();
         String filter = getTargetItemFilterName();
+        if (orderTargetMode.get() == OrderTargetMode.Player_List && getConfiguredOrderPlayers().isEmpty()) {
+            error("Player_List dang bat nhung order-player-list dang trong.");
+            toggle();
+            return;
+        }
         if (filter == null || filter.isBlank()) {
             error("Chưa chọn target-item (item cần bán)!");
             toggle();
@@ -485,6 +523,8 @@ public class KamiOrderBot extends Module {
         pendingSpawnerDrop = false;
         pendingSpawnerDropWaitTicks = 0;
         postConfirmReopenClosed = false;
+        currentOrderPlayerIndex = 0;
+        ordersDoneForCurrentPlayer = 0;
     }
 
     @EventHandler
@@ -529,6 +569,11 @@ public class KamiOrderBot extends Module {
 
     private void handleSendOrder() {
         String cmdArg = getOrderCommandArg();
+        if (orderTargetMode.get() == OrderTargetMode.Player_List && getConfiguredOrderPlayers().isEmpty()) {
+            error("Player_List dang bat nhung order-player-list dang trong.");
+            state = State.DONE;
+            return;
+        }
         if (cmdArg == null || cmdArg.isBlank()) {
             error("Thiếu order-player-name hoặc target item.");
             state = State.DONE;
@@ -599,7 +644,9 @@ public class KamiOrderBot extends Module {
                 state = State.SEND_ORDER;
             } else {
                 error("Không mở được GUI Order sau 3 lần.");
-                state = State.DONE;
+                if (!skipCurrentPlayerInList("khong mo duoc GUI Order sau 3 lan")) {
+                    state = State.DONE;
+                }
             }
         }
     }
@@ -631,7 +678,9 @@ public class KamiOrderBot extends Module {
             scanEmptyRetries = 0;
             if (!restartOrderSearch("không thấy target/order phù hợp")) {
                 closeScreen();
-                state = State.DONE;
+                if (!skipCurrentPlayerInList("khong thay target/order phu hop")) {
+                    state = State.DONE;
+                }
             }
             return;
         }
@@ -643,7 +692,9 @@ public class KamiOrderBot extends Module {
             log("Có " + orders.size() + " order parse được nhưng bị lọc (price-min/max / min-remaining).");
             if (!restartOrderSearch("order bị lọc hết bởi filter")) {
                 closeScreen();
-                state = State.DONE;
+                if (!skipCurrentPlayerInList("order bi loc het boi filter")) {
+                    state = State.DONE;
+                }
             }
             return;
         }
@@ -858,6 +909,11 @@ public class KamiOrderBot extends Module {
             log("Còn " + fillsLeft + " lần fill — /order lại cùng item.");
             orderRetry = 0;
             state = State.SEND_ORDER;
+            return;
+        }
+
+        // Hết order hiện tại → tìm order tốt tiếp theo
+        if (completePlayerListOrderIfNeeded()) {
             return;
         }
 
@@ -1532,9 +1588,100 @@ public class KamiOrderBot extends Module {
      * - Trống → fallback tên item (hành vi cũ)
      */
     private String getOrderCommandArg() {
+        if (orderTargetMode.get() == OrderTargetMode.Player_List) {
+            String player = getCurrentOrderPlayerName();
+            if (player != null && !player.isBlank()) return player;
+            return "";
+        }
         String player = orderPlayerName.get();
         if (player != null && !player.isBlank()) return player.trim();
         return getTargetItemFilterName();
+    }
+
+    private List<String> getConfiguredOrderPlayers() {
+        List<String> raw = orderPlayerList.get();
+        List<String> names = new ArrayList<>();
+        if (raw == null) return names;
+        for (String entry : raw) {
+            if (entry == null) continue;
+            String name = entry.trim();
+            if (!name.isBlank()) names.add(name);
+        }
+        return names;
+    }
+
+    private String getCurrentOrderPlayerName() {
+        List<String> names = getConfiguredOrderPlayers();
+        if (names.isEmpty()) return "";
+        if (currentOrderPlayerIndex < 0) currentOrderPlayerIndex = 0;
+        if (currentOrderPlayerIndex >= names.size()) return "";
+        return names.get(currentOrderPlayerIndex);
+    }
+
+    private void resetOrderSearchForPlayer() {
+        waitTicks = 0;
+        orderRetry = 0;
+        scanEmptyRetries = 0;
+        pagesScanned = 0;
+        searchRestartsDone = 0;
+    }
+
+    private boolean skipCurrentPlayerInList(String reason) {
+        if (orderTargetMode.get() != OrderTargetMode.Player_List) return false;
+
+        String current = getCurrentOrderPlayerName();
+        List<String> names = getConfiguredOrderPlayers();
+        currentOrderPlayerIndex++;
+        ordersDoneForCurrentPlayer = 0;
+        resetOrderSearchForPlayer();
+
+        if (currentOrderPlayerIndex >= names.size()) {
+            log("Player_List: het danh sach sau khi bo qua "
+                + (current == null || current.isBlank() ? "player hien tai" : current)
+                + " (" + reason + ") - dung OrderBot.");
+            state = State.DONE;
+            return true;
+        }
+
+        log("Player_List: bo qua " + current + " (" + reason + ") -> /order "
+            + names.get(currentOrderPlayerIndex) + ".");
+        state = State.SEND_ORDER;
+        scheduleDelay();
+        return true;
+    }
+
+    private boolean completePlayerListOrderIfNeeded() {
+        if (orderTargetMode.get() != OrderTargetMode.Player_List) return false;
+
+        String current = getCurrentOrderPlayerName();
+        ordersDoneForCurrentPlayer++;
+        int max = Math.max(1, ordersPerPlayer.get());
+        resetOrderSearchForPlayer();
+
+        if (ordersDoneForCurrentPlayer < max) {
+            log("Player_List: " + current + " da xong " + ordersDoneForCurrentPlayer
+                + "/" + max + " order - tiep tuc cung player.");
+            state = State.SEND_ORDER;
+            scheduleDelay();
+            return true;
+        }
+
+        List<String> names = getConfiguredOrderPlayers();
+        currentOrderPlayerIndex++;
+        ordersDoneForCurrentPlayer = 0;
+
+        if (currentOrderPlayerIndex >= names.size()) {
+            log("Player_List: da hoan tat danh sach (" + names.size()
+                + " player, " + max + " order/player) - dung OrderBot.");
+            state = State.DONE;
+            return true;
+        }
+
+        log("Player_List: hoan tat " + current + " x" + max + " - chuyen sang /order "
+            + names.get(currentOrderPlayerIndex) + ".");
+        state = State.SEND_ORDER;
+        scheduleDelay();
+        return true;
     }
 
     /**

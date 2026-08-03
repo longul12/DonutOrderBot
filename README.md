@@ -20,6 +20,7 @@ the Minecraft mods folder to avoid duplicate module registration.
 - Select target item with Meteor `ItemListSetting`.
 - Optional manual item name mode.
 - Sends `/order <item-or-player-name>`.
+- Can order by a configured player list with one shared order count per player.
 - Parses order lore for price, delivered count, total count, remaining amount,
   and owner name where available.
 - Filters by price and minimum remaining amount.
@@ -97,7 +98,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.5.jar
+build/libs/kami-order-bot-0.5.6.jar
 ```
 
 ## Maintainer Release Build
@@ -117,8 +118,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.5.jar
-build/libs/kami-order-bot-0.5.5-obfuscated.jar
+build/libs/kami-order-bot-0.5.6.jar
+build/libs/kami-order-bot-0.5.6-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -144,7 +145,10 @@ Misc -> kami-spawner-protect
 ```
 
 Configure `target-item`, order naming settings, price filters, loop/drop options,
-drop timing, repeat wait, and confirm-slot settings before running.
+drop timing, repeat wait, and confirm-slot settings before running. For player
+list ordering, set `order-target-mode` to `Player_List`, add names to
+`order-player-list`, and set `orders-per-player` for the shared count applied to
+each name.
 
 ## Dependencies
 
@@ -158,11 +162,11 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.5` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified work restores SpawnerDrop final Order after
-Sell All on stop-item detection: Drop sells the junk once, runs Order one final
-time if target items remain in inventory, then waits for respawn without Order
-re-enabling Drop.
+Version `0.5.6` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build adds OrderBot `Player_List` mode: it
+orders each configured player for `orders-per-player` completed orders before
+moving to the next name, while preserving the existing single-player/item
+fallback mode.
 
 ## Known Limitations
 
