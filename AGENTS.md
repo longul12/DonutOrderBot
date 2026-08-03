@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.6.jar
+build/libs/kami-order-bot-0.5.7.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.6-obfuscated.jar
+build/libs/kami-order-bot-0.5.7-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -143,7 +143,8 @@ handlers, enum constants, and reflection.
 - SpawnerDrop stop-item handling must keep the Sell All step. The intended flow
   is Sell All once, close the spawner GUI, run OrderBot one final time if target
   items remain, then wait for respawn without allowing OrderBot to enable Drop.
-- OrderBot `Player_List` mode uses `order-player-list` plus one shared
-  `orders-per-player` count. Keep the old `Single_Player` path as the default
-  fallback behavior.
+- OrderBot `Player_List` mode uses one shared `orders-per-player` count. It can
+  read names from the Meteor `order-player-list` setting or from
+  `config/kami-order-player-list.txt` when `player-list-source` is `Txt_File`.
+  Keep the old `Single_Player` path as the default fallback behavior.
 - There are no tests; build and in-game verification are both important.

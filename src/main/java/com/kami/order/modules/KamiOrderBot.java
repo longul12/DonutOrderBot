@@ -6,6 +6,7 @@ import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.orbit.EventHandler;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.LoreComponent;
@@ -20,6 +21,9 @@ import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -100,6 +104,11 @@ public class KamiOrderBot extends Module {
         Player_List
     }
 
+    public enum PlayerListSource {
+        Setting_List,
+        Txt_File
+    }
+
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgFilter = settings.createGroup("Order Filter");
     private final SettingGroup sgConfirm = settings.createGroup("Confirm Slot");
@@ -131,17 +140,33 @@ public class KamiOrderBot extends Module {
         .build()
     );
 
+    private final Setting<PlayerListSource> playerListSource = sgGeneral.add(new EnumSetting.Builder<PlayerListSource>()
+        .name("player-list-source")
+        .description("Nguon danh sach player: Setting_List hoac Txt_File.")
+        .defaultValue(PlayerListSource.Setting_List)
+        .visible(() -> orderTargetMode.get() == OrderTargetMode.Player_List)
+        .build()
+    );
+
     private final Setting<List<String>> orderPlayerList = sgGeneral.add(new StringListSetting.Builder()
         .name("order-player-list")
         .description("Danh sach player de /order, moi dong la mot ten.")
         .defaultValue(List.of())
-        .visible(() -> orderTargetMode.get() == OrderTargetMode.Player_List)
+        .visible(() -> orderTargetMode.get() == OrderTargetMode.Player_List && playerListSource.get() == PlayerListSource.Setting_List)
+        .build()
+    );
+
+    private final Setting<String> playerListFile = sgGeneral.add(new StringSetting.Builder()
+        .name("player-list-file")
+        .description("File txt danh sach player, moi dong la mot name. Duong dan tu thu muc .minecraft neu khong phai absolute.")
+        .defaultValue("config/kami-order-player-list.txt")
+        .visible(() -> orderTargetMode.get() == OrderTargetMode.Player_List && playerListSource.get() == PlayerListSource.Txt_File)
         .build()
     );
 
     private final Setting<Integer> ordersPerPlayer = sgGeneral.add(new IntSetting.Builder()
         .name("orders-per-player")
-        .description("So order hoan tat cho moi player trong order-player-list.")
+        .description("So order hoan tat cho moi player trong danh sach.")
         .defaultValue(1)
         .range(1, 999)
         .sliderRange(1, 20)
@@ -404,6 +429,7 @@ public class KamiOrderBot extends Module {
     private boolean postConfirmReopenClosed = false;
     private int currentOrderPlayerIndex = 0;
     private int ordersDoneForCurrentPlayer = 0;
+    private List<String> runtimeOrderPlayers = List.of();
 
     /** 27 stack × 64 = 1 shulker đầy */
     private static final int ITEMS_PER_FILL = 1728;
@@ -463,6 +489,7 @@ public class KamiOrderBot extends Module {
 
         resetState();
         resumeActivation = resume;
+        runtimeOrderPlayers = loadConfiguredOrderPlayers();
 
         String cmdArg = getOrderCommandArg();
         String filter = getTargetItemFilterName();
@@ -525,6 +552,7 @@ public class KamiOrderBot extends Module {
         postConfirmReopenClosed = false;
         currentOrderPlayerIndex = 0;
         ordersDoneForCurrentPlayer = 0;
+        runtimeOrderPlayers = List.of();
     }
 
     @EventHandler
@@ -1599,12 +1627,58 @@ public class KamiOrderBot extends Module {
     }
 
     private List<String> getConfiguredOrderPlayers() {
-        List<String> raw = orderPlayerList.get();
+        return runtimeOrderPlayers == null ? List.of() : runtimeOrderPlayers;
+    }
+
+    private List<String> loadConfiguredOrderPlayers() {
+        if (orderTargetMode.get() != OrderTargetMode.Player_List) return List.of();
+        if (playerListSource.get() == PlayerListSource.Txt_File) {
+            return loadOrderPlayersFromTxt();
+        }
+        return normalizeOrderPlayerLines(orderPlayerList.get());
+    }
+
+    private List<String> loadOrderPlayersFromTxt() {
+        Path path = resolvePlayerListFilePath();
+        if (path == null) return List.of();
+
+        try {
+            if (!Files.exists(path)) {
+                Path parent = path.getParent();
+                if (parent != null) Files.createDirectories(parent);
+                Files.createFile(path);
+                warning("Da tao file player list trong: " + path);
+                return List.of();
+            }
+            return normalizeOrderPlayerLines(Files.readAllLines(path));
+        } catch (IOException e) {
+            error("Khong doc duoc player-list-file: " + path + " (" + e.getMessage() + ")");
+            return List.of();
+        }
+    }
+
+    private Path resolvePlayerListFilePath() {
+        String raw = playerListFile.get();
+        if (raw == null || raw.isBlank()) raw = "config/kami-order-player-list.txt";
+        try {
+            Path path = Path.of(raw.trim());
+            if (!path.isAbsolute()) {
+                path = FabricLoader.getInstance().getGameDir().resolve(path);
+            }
+            return path.normalize();
+        } catch (RuntimeException e) {
+            error("player-list-file khong hop le: " + raw);
+            return null;
+        }
+    }
+
+    private List<String> normalizeOrderPlayerLines(List<String> raw) {
         List<String> names = new ArrayList<>();
         if (raw == null) return names;
         for (String entry : raw) {
             if (entry == null) continue;
             String name = entry.trim();
+            if (name.startsWith("#")) continue;
             if (!name.isBlank()) names.add(name);
         }
         return names;

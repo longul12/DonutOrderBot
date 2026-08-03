@@ -21,6 +21,8 @@ the Minecraft mods folder to avoid duplicate module registration.
 - Optional manual item name mode.
 - Sends `/order <item-or-player-name>`.
 - Can order by a configured player list with one shared order count per player.
+- Can load the player list from `config/kami-order-player-list.txt`, one name
+  per line.
 - Parses order lore for price, delivered count, total count, remaining amount,
   and owner name where available.
 - Filters by price and minimum remaining amount.
@@ -98,7 +100,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.6.jar
+build/libs/kami-order-bot-0.5.7.jar
 ```
 
 ## Maintainer Release Build
@@ -118,8 +120,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.6.jar
-build/libs/kami-order-bot-0.5.6-obfuscated.jar
+build/libs/kami-order-bot-0.5.7.jar
+build/libs/kami-order-bot-0.5.7-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -146,9 +148,11 @@ Misc -> kami-spawner-protect
 
 Configure `target-item`, order naming settings, price filters, loop/drop options,
 drop timing, repeat wait, and confirm-slot settings before running. For player
-list ordering, set `order-target-mode` to `Player_List`, add names to
-`order-player-list`, and set `orders-per-player` for the shared count applied to
-each name.
+list ordering, set `order-target-mode` to `Player_List`, set
+`player-list-source` to either `Setting_List` or `Txt_File`, and set
+`orders-per-player` for the shared count applied to each name. With `Txt_File`,
+the default file is `config/kami-order-player-list.txt`; add one player name per
+line. Empty lines and lines starting with `#` are ignored.
 
 ## Dependencies
 
@@ -162,11 +166,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.6` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build adds OrderBot `Player_List` mode: it
-orders each configured player for `orders-per-player` completed orders before
-moving to the next name, while preserving the existing single-player/item
-fallback mode.
+Version `0.5.7` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build adds `Txt_File` source for OrderBot
+`Player_List` mode, allowing names to be loaded from
+`config/kami-order-player-list.txt`.
 
 ## Known Limitations
 
