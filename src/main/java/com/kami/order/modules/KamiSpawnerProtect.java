@@ -931,6 +931,11 @@ public class KamiSpawnerProtect extends Module {
         }
 
         sendSneak(false);
+        if (!selectSafeHandForEnderChestOpen()) {
+            scheduleFixedDelay(1);
+            return;
+        }
+
         BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(enderChestPos), Direction.UP, enderChestPos, false);
         if (rotate.get()) Rotations.rotate(Rotations.getYaw(Vec3d.ofCenter(enderChestPos)), Rotations.getPitch(Vec3d.ofCenter(enderChestPos)), 50);
         mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
@@ -1689,6 +1694,54 @@ public class KamiSpawnerProtect extends Module {
             mc.player
         );
         return hotbarSlot;
+    }
+
+    private boolean selectSafeHandForEnderChestOpen() {
+        if (mc.player == null) return false;
+        int selected = mc.player.getInventory().getSelectedSlot();
+        ItemStack selectedStack = mc.player.getInventory().getStack(selected);
+        if (isSafeEnderChestOpenHand(selectedStack)) return true;
+
+        int slot = findHotbarStack(Items.ENDER_CHEST);
+        if (slot < 0) slot = findEmptyHotbarSlot();
+        if (slot < 0) slot = findSafeHotbarOpenSlot();
+        if (slot < 0 || slot == selected) return true;
+
+        InvUtils.swap(slot, false);
+        return false;
+    }
+
+    private boolean isSafeEnderChestOpenHand(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return true;
+        if (stack.isOf(Items.SPAWNER)) return false;
+        if (isPickaxe(stack)) return false;
+        return true;
+    }
+
+    private int findHotbarStack(Item item) {
+        if (mc.player == null || item == null) return -1;
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (!stack.isEmpty() && stack.isOf(item)) return i;
+        }
+        return -1;
+    }
+
+    private int findEmptyHotbarSlot() {
+        if (mc.player == null) return -1;
+        for (int i = 0; i < 9; i++) {
+            if (mc.player.getInventory().getStack(i).isEmpty()) return i;
+        }
+        return -1;
+    }
+
+    private int findSafeHotbarOpenSlot() {
+        if (mc.player == null) return -1;
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (isSafeEnderChestOpenHand(stack)) return i;
+        }
+        return -1;
     }
 
     private int findEnderChestHotbarTarget() {
