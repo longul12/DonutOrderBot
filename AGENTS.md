@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.8.jar
+build/libs/kami-order-bot-0.5.9.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.8-obfuscated.jar
+build/libs/kami-order-bot-0.5.9-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -142,6 +142,9 @@ handlers, enum constants, and reflection.
 - SpawnerProtect must release sneak before opening Ender Chest. Toggle-sneak
   client settings can otherwise keep the player sneaking and prevent chest GUI
   open/interact behavior.
+- SpawnerProtect should not release sneak after every picked-up spawner when
+  more nearby spawners can be mined. `store-after-spawner-stacks` controls how
+  many spawner stacks to collect before opening Ender Chest.
 - When SpawnerProtect takes over because of a threat, it may close an existing
   OrderBot/SpawnerDrop GUI up to three times before acquiring GUI ownership.
 - SpawnerDrop stop-item handling must keep the Sell All step. The intended flow

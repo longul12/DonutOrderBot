@@ -117,6 +117,16 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
+    private final Setting<Integer> storeAfterSpawnerStacks = sgGeneral.add(new IntSetting.Builder()
+        .name("store-after-spawner-stacks")
+        .description("So stack Spawner trong inventory truoc khi nha sneak va mo Ender Chest de cat.")
+        .defaultValue(3)
+        .range(1, 27)
+        .sliderRange(1, 9)
+        .visible(keepRunning::get)
+        .build()
+    );
+
     private final Setting<Boolean> disconnectAfterClear = sgGeneral.add(new BoolSetting.Builder()
         .name("disconnect-after-clear")
         .description("Sau khi cat het Spawner quanh khu vuc va khong con target ke tiep thi tu dong out khoi server.")
@@ -745,7 +755,13 @@ public class KamiSpawnerProtect extends Module {
         waitTicks++;
 
         if (hasNewSpawnerPickedUp()) {
+            if (continueMiningBeforeStoreIfPossible()) {
+                scheduleDelay();
+                return;
+            }
+
             log("Spawner da vao inventory - tim Ender Chest gan nhat.");
+            waitTicks = 0;
             state = State.FIND_ENDER_CHEST;
             scheduleDelay();
             return;
@@ -755,6 +771,32 @@ public class KamiSpawnerProtect extends Module {
             warning("Timeout cho Spawner vao inventory - tim Spawner tiep theo neu con.");
             afterOneSpawnerCycle();
         }
+    }
+
+    private boolean continueMiningBeforeStoreIfPossible() {
+        if (!keepRunning.get()) return false;
+
+        int stacks = countSpawnerStacksInPlayerInventory();
+        int targetStacks = Math.max(1, storeAfterSpawnerStacks.get());
+        if (stacks >= targetStacks) {
+            log("Da co " + stacks + "/" + targetStacks + " stack Spawner - chuyen sang cat Ender Chest.");
+            return false;
+        }
+
+        if (!refreshTargetSpawner(true)) {
+            log("Khong con Spawner gan do - cat " + stacks + " stack Spawner dang co.");
+            return false;
+        }
+
+        if (!autoRunWithoutThreat.get() && findThreat() == null) {
+            log("Khong con threat - cat " + stacks + " stack Spawner dang co.");
+            return false;
+        }
+
+        log("Da nhat Spawner, dang co " + stacks + "/" + targetStacks
+            + " stack - giu sneak va dao Spawner tiep theo.");
+        state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
+        return true;
     }
 
     private void handleFindEnderChest() {
@@ -1323,6 +1365,18 @@ public class KamiSpawnerProtect extends Module {
         }
         ItemStack cursor = mc.player.currentScreenHandler == null ? ItemStack.EMPTY : mc.player.currentScreenHandler.getCursorStack();
         if (!cursor.isEmpty() && cursor.isOf(Items.SPAWNER)) count += cursor.getCount();
+        return count;
+    }
+
+    private int countSpawnerStacksInPlayerInventory() {
+        if (mc.player == null) return 0;
+        int count = 0;
+        for (int i = 0; i < mc.player.getInventory().size(); i++) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (!stack.isEmpty() && stack.isOf(Items.SPAWNER)) count++;
+        }
+        ItemStack cursor = mc.player.currentScreenHandler == null ? ItemStack.EMPTY : mc.player.currentScreenHandler.getCursorStack();
+        if (!cursor.isEmpty() && cursor.isOf(Items.SPAWNER)) count++;
         return count;
     }
 

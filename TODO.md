@@ -208,6 +208,16 @@
     configured sell items and always protects spawners, ender chests, gear,
     bundles, enchanted books, and shulker boxes. Version bumped to `0.5.8`.
 
+- Description: Batch SpawnerProtect storage after several spawner stacks.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Added `store-after-spawner-stacks`. After pickup, Protect keeps sneak
+    active and continues mining nearby spawners until the configured stack count
+    is reached, no nearby spawner remains, or no threat remains. Version bumped
+    to `0.5.9`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -223,7 +233,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.8-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.9-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
