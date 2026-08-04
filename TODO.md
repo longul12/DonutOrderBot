@@ -227,6 +227,14 @@
     handlers, and returns to the mining loop after storing a batch instead of
     going through the slower guard cycle. Version bumped to `0.5.10`.
 
+- Description: Add SpawnerProtect hold/toggle sneak control mode.
+  Priority: High
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Added `sneak-control-mode` with `Hold` and `Toggle` options so users
+    can match Minecraft's sneak key behavior. Version bumped to `0.5.11`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -242,7 +250,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.10-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.11-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
