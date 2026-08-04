@@ -105,7 +105,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.9.jar
+build/libs/kami-order-bot-0.5.10.jar
 ```
 
 ## Maintainer Release Build
@@ -125,8 +125,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.9.jar
-build/libs/kami-order-bot-0.5.9-obfuscated.jar
+build/libs/kami-order-bot-0.5.10.jar
+build/libs/kami-order-bot-0.5.10-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -171,9 +171,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.9` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build lets SpawnerProtect keep sneaking and
-mine multiple spawner stacks before releasing sneak to store them in Ender Chest.
+Version `0.5.10` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build refines SpawnerProtect's loop: mine
+spawners while sneaking, release sneak only when storing, retry Ender Chest open
+quickly, then return to the mining loop after storage.
 
 ## Known Limitations
 

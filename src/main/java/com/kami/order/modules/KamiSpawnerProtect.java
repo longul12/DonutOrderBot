@@ -884,9 +884,15 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        if (isContainerOpen()) {
+        if (isStorageContainerOpen()) {
             waitTicks = 0;
             state = State.STORE_SPAWNER;
+            return;
+        }
+
+        if (isContainerOpen()) {
+            closeScreen();
+            scheduleFixedDelay(1);
             return;
         }
 
@@ -903,6 +909,7 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
+        sendSneak(false);
         BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(enderChestPos), Direction.UP, enderChestPos, false);
         if (rotate.get()) Rotations.rotate(Rotations.getYaw(Vec3d.ofCenter(enderChestPos)), Rotations.getPitch(Vec3d.ofCenter(enderChestPos)), 50);
         mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
@@ -911,11 +918,11 @@ public class KamiSpawnerProtect extends Module {
             error("Timeout mo Ender Chest GUI - giu Spawner trong inventory.");
             state = State.ERROR;
         }
-        scheduleDelay();
+        scheduleFixedDelay(1);
     }
 
     private void handleStoreSpawner() {
-        if (!isContainerOpen()) {
+        if (!isStorageContainerOpen()) {
             waitTicks = 0;
             state = State.STOP_SNEAK_BEFORE_OPEN_CHEST;
             return;
@@ -962,8 +969,8 @@ public class KamiSpawnerProtect extends Module {
 
             closeScreen();
             log("Da cat het tat ca stack Spawner - dong GUI.");
-            afterOneSpawnerCycle();
-            scheduleDelay();
+            afterStoredSpawnerBatch();
+            scheduleFixedDelay(1);
             return;
         }
 
@@ -975,8 +982,8 @@ public class KamiSpawnerProtect extends Module {
         if (!hasSpawnerInInventory()) {
             closeScreen();
             log("Da cat het Spawner - dong GUI.");
-            afterOneSpawnerCycle();
-            scheduleDelay();
+            afterStoredSpawnerBatch();
+            scheduleFixedDelay(1);
             return;
         }
 
@@ -997,6 +1004,41 @@ public class KamiSpawnerProtect extends Module {
         state = keepRunning.get() ? State.ARMED : State.COMPLETED;
         if (state != State.COMPLETED) releaseProtectGuiOwner();
         scheduleDelay();
+    }
+
+    private void afterStoredSpawnerBatch() {
+        restoreState();
+        storeRetryCount = 0;
+        storeVerifyTicks = 0;
+        waitTicks = 0;
+
+        if (!keepRunning.get()) {
+            if (disconnectAfterClear.get()) {
+                disconnectAfterSpawnerClear();
+                return;
+            }
+            state = State.COMPLETED;
+            return;
+        }
+
+        if (refreshTargetSpawner(true) && (autoRunWithoutThreat.get() || findThreat() != null)) {
+            if (!ensureProtectGuiOwner(findThreat() != null)) {
+                state = State.SCAN_PLAYERS;
+                return;
+            }
+            log("Da cat Spawner xong - quay lai sneak dap Spawner tiep.");
+            state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
+            return;
+        }
+
+        releaseProtectGuiOwner();
+        confirmedThreat = null;
+        threatTicks = 0;
+        if (disconnectAfterClear.get()) {
+            disconnectAfterSpawnerClear();
+            return;
+        }
+        state = State.SCAN_PLAYERS;
     }
 
     private void afterOneSpawnerCycle() {
@@ -1726,6 +1768,13 @@ public class KamiSpawnerProtect extends Module {
         if (mc.player == null) return false;
         if (mc.player.currentScreenHandler != mc.player.playerScreenHandler) return true;
         return mc.currentScreen instanceof HandledScreen;
+    }
+
+    private boolean isStorageContainerOpen() {
+        if (mc.player == null) return false;
+        ScreenHandler menu = mc.player.currentScreenHandler;
+        if (menu == null || menu == mc.player.playerScreenHandler) return false;
+        return menu.slots.size() > 36;
     }
 
     private void closeScreen() {
