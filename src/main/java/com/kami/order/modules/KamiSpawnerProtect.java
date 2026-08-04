@@ -124,16 +124,6 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
-    private final Setting<Integer> storeAfterSpawnerStacks = sgGeneral.add(new IntSetting.Builder()
-        .name("store-after-spawner-stacks")
-        .description("So stack Spawner trong inventory truoc khi nha sneak va mo Ender Chest de cat.")
-        .defaultValue(3)
-        .range(1, 27)
-        .sliderRange(1, 9)
-        .visible(keepRunning::get)
-        .build()
-    );
-
     private final Setting<Boolean> disconnectAfterClear = sgGeneral.add(new BoolSetting.Builder()
         .name("disconnect-after-clear")
         .description("Sau khi cat het Spawner quanh khu vuc va khong con target ke tiep thi tu dong out khoi server.")
@@ -460,7 +450,6 @@ public class KamiSpawnerProtect extends Module {
             case WAIT_PICKUP -> handleWaitPickup();
             case FIND_ENDER_CHEST -> handleFindEnderChest();
             case PLACE_ENDER_CHEST -> handlePlaceEnderChest();
-            case STOP_SNEAK_BEFORE_OPEN_CHEST -> handleStopSneakBeforeOpenChest();
             case OPEN_ENDER_CHEST -> handleOpenEnderChest();
             case STORE_SPAWNER -> handleStoreSpawner();
             case VERIFY_STORE -> handleVerifyStore();
@@ -776,11 +765,6 @@ public class KamiSpawnerProtect extends Module {
         waitTicks++;
 
         if (hasNewSpawnerPickedUp()) {
-            if (continueMiningBeforeStoreIfPossible()) {
-                scheduleDelay();
-                return;
-            }
-
             log("Spawner da vao inventory - tim Ender Chest gan nhat.");
             waitTicks = 0;
             state = State.FIND_ENDER_CHEST;
@@ -794,38 +778,11 @@ public class KamiSpawnerProtect extends Module {
         }
     }
 
-    private boolean continueMiningBeforeStoreIfPossible() {
-        if (!keepRunning.get()) return false;
-
-        int stacks = countSpawnerStacksInPlayerInventory();
-        int targetStacks = Math.max(1, storeAfterSpawnerStacks.get());
-        if (stacks >= targetStacks) {
-            log("Da co " + stacks + "/" + targetStacks + " stack Spawner - chuyen sang cat Ender Chest.");
-            return false;
-        }
-
-        if (!refreshTargetSpawner(true)) {
-            log("Khong con Spawner gan do - cat " + stacks + " stack Spawner dang co.");
-            return false;
-        }
-
-        if (!autoRunWithoutThreat.get() && findThreat() == null) {
-            log("Khong con threat - cat " + stacks + " stack Spawner dang co.");
-            return false;
-        }
-
-        log("Da nhat Spawner, dang co " + stacks + "/" + targetStacks
-            + " stack - giu sneak va dao Spawner tiep theo.");
-        state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
-        return true;
-    }
-
     private void handleFindEnderChest() {
         enderChestPos = findNearestEnderChest();
         if (enderChestPos != null) {
             log("Tim thay Ender Chest gan nhat: " + enderChestPos.toShortString() + ".");
-            waitTicks = 0;
-            state = State.STOP_SNEAK_BEFORE_OPEN_CHEST;
+            state = State.OPEN_ENDER_CHEST;
             scheduleDelay();
             return;
         }
@@ -876,27 +833,8 @@ public class KamiSpawnerProtect extends Module {
         placedEnderChestPos = placePos.toImmutable();
         enderChestPos = placedEnderChestPos;
         log("Da dat Ender Chest tai " + placePos.toShortString() + ".");
-        waitTicks = 0;
-        state = State.STOP_SNEAK_BEFORE_OPEN_CHEST;
-        scheduleDelay();
-    }
-
-    private void handleStopSneakBeforeOpenChest() {
-        sendSneak(false);
-        sneakStarted = false;
-        waitTicks++;
-
-        if (waitTicks == 1) {
-            log("Da nha sneak truoc khi mo Ender Chest.");
-        }
-
-        if (waitTicks < 2) {
-            scheduleFixedDelay(1);
-            return;
-        }
-
-        waitTicks = 0;
         state = State.OPEN_ENDER_CHEST;
+        scheduleDelay();
     }
 
     private void handleOpenEnderChest() {
@@ -905,15 +843,9 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        if (isStorageContainerOpen()) {
+        if (isContainerOpen()) {
             waitTicks = 0;
             state = State.STORE_SPAWNER;
-            return;
-        }
-
-        if (isContainerOpen()) {
-            closeScreen();
-            scheduleFixedDelay(1);
             return;
         }
 
@@ -930,7 +862,6 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        sendSneak(false);
         BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(enderChestPos), Direction.UP, enderChestPos, false);
         if (rotate.get()) Rotations.rotate(Rotations.getYaw(Vec3d.ofCenter(enderChestPos)), Rotations.getPitch(Vec3d.ofCenter(enderChestPos)), 50);
         mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
@@ -939,13 +870,12 @@ public class KamiSpawnerProtect extends Module {
             error("Timeout mo Ender Chest GUI - giu Spawner trong inventory.");
             state = State.ERROR;
         }
-        scheduleFixedDelay(1);
+        scheduleDelay();
     }
 
     private void handleStoreSpawner() {
-        if (!isStorageContainerOpen()) {
-            waitTicks = 0;
-            state = State.STOP_SNEAK_BEFORE_OPEN_CHEST;
+        if (!isContainerOpen()) {
+            state = State.OPEN_ENDER_CHEST;
             return;
         }
 
@@ -990,8 +920,8 @@ public class KamiSpawnerProtect extends Module {
 
             closeScreen();
             log("Da cat het tat ca stack Spawner - dong GUI.");
-            afterStoredSpawnerBatch();
-            scheduleFixedDelay(1);
+            afterOneSpawnerCycle();
+            scheduleDelay();
             return;
         }
 
@@ -1003,8 +933,8 @@ public class KamiSpawnerProtect extends Module {
         if (!hasSpawnerInInventory()) {
             closeScreen();
             log("Da cat het Spawner - dong GUI.");
-            afterStoredSpawnerBatch();
-            scheduleFixedDelay(1);
+            afterOneSpawnerCycle();
+            scheduleDelay();
             return;
         }
 
@@ -1025,41 +955,6 @@ public class KamiSpawnerProtect extends Module {
         state = keepRunning.get() ? State.ARMED : State.COMPLETED;
         if (state != State.COMPLETED) releaseProtectGuiOwner();
         scheduleDelay();
-    }
-
-    private void afterStoredSpawnerBatch() {
-        restoreState();
-        storeRetryCount = 0;
-        storeVerifyTicks = 0;
-        waitTicks = 0;
-
-        if (!keepRunning.get()) {
-            if (disconnectAfterClear.get()) {
-                disconnectAfterSpawnerClear();
-                return;
-            }
-            state = State.COMPLETED;
-            return;
-        }
-
-        if (refreshTargetSpawner(true) && (autoRunWithoutThreat.get() || findThreat() != null)) {
-            if (!ensureProtectGuiOwner(findThreat() != null)) {
-                state = State.SCAN_PLAYERS;
-                return;
-            }
-            log("Da cat Spawner xong - quay lai sneak dap Spawner tiep.");
-            state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
-            return;
-        }
-
-        releaseProtectGuiOwner();
-        confirmedThreat = null;
-        threatTicks = 0;
-        if (disconnectAfterClear.get()) {
-            disconnectAfterSpawnerClear();
-            return;
-        }
-        state = State.SCAN_PLAYERS;
     }
 
     private void afterOneSpawnerCycle() {
@@ -1431,18 +1326,6 @@ public class KamiSpawnerProtect extends Module {
         return count;
     }
 
-    private int countSpawnerStacksInPlayerInventory() {
-        if (mc.player == null) return 0;
-        int count = 0;
-        for (int i = 0; i < mc.player.getInventory().size(); i++) {
-            ItemStack stack = mc.player.getInventory().getStack(i);
-            if (!stack.isEmpty() && stack.isOf(Items.SPAWNER)) count++;
-        }
-        ItemStack cursor = mc.player.currentScreenHandler == null ? ItemStack.EMPTY : mc.player.currentScreenHandler.getCursorStack();
-        if (!cursor.isEmpty() && cursor.isOf(Items.SPAWNER)) count++;
-        return count;
-    }
-
     private BlockPos findNearestEnderChest() {
         if (mc.player == null || mc.world == null) return null;
         BlockPos origin = mc.player.getBlockPos();
@@ -1801,13 +1684,6 @@ public class KamiSpawnerProtect extends Module {
         return mc.currentScreen instanceof HandledScreen;
     }
 
-    private boolean isStorageContainerOpen() {
-        if (mc.player == null) return false;
-        ScreenHandler menu = mc.player.currentScreenHandler;
-        if (menu == null || menu == mc.player.playerScreenHandler) return false;
-        return menu.slots.size() > 36;
-    }
-
     private void closeScreen() {
         if (mc.player != null && ownsGui()) mc.player.closeHandledScreen();
     }
@@ -1842,7 +1718,7 @@ public class KamiSpawnerProtect extends Module {
             case OPEN_SELL_GUI, SELL_ITEMS, SELL_ITEMS_SECOND_PASS, VERIFY_SELL_SPACE -> "sell cleanup";
             case BREAK_SPAWNER -> "breaking";
             case WAIT_PICKUP -> "pickup";
-            case FIND_ENDER_CHEST, STOP_SNEAK_BEFORE_OPEN_CHEST -> "find echest";
+            case FIND_ENDER_CHEST -> "find echest";
             case OPEN_ENDER_CHEST -> "open echest";
             case STORE_SPAWNER, VERIFY_STORE -> "store";
             case COMPLETED -> "done";
@@ -1884,7 +1760,6 @@ public class KamiSpawnerProtect extends Module {
         WAIT_PICKUP,
         FIND_ENDER_CHEST,
         PLACE_ENDER_CHEST,
-        STOP_SNEAK_BEFORE_OPEN_CHEST,
         OPEN_ENDER_CHEST,
         STORE_SPAWNER,
         VERIFY_STORE,

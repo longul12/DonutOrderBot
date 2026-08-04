@@ -54,8 +54,9 @@ the Minecraft mods folder to avoid duplicate module registration.
   key settings do not block the chest GUI after breaking a spawner.
 - `KamiSpawnerProtect` has `sneak-control-mode` with `Hold` and `Toggle` so the
   module can match the user's Minecraft sneak key behavior.
-- `KamiSpawnerProtect` can keep sneaking and mine several spawner stacks before
-  opening Ender Chest, controlled by `store-after-spawner-stacks`.
+- `KamiSpawnerProtect` uses the 0.5.7-style protect flow: sneak while breaking,
+  release sneak once the spawner block is gone, then pick up and store in Ender
+  Chest before continuing.
 - Includes GUI ownership guards shared with SpawnerDrop.
 - Includes a `MouseLockMixin` that prevents Minecraft from grabbing the mouse
   while a bot is running. It does not warp or click the system cursor.
@@ -109,7 +110,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.12.jar
+build/libs/kami-order-bot-0.5.13.jar
 ```
 
 ## Maintainer Release Build
@@ -129,8 +130,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.12.jar
-build/libs/kami-order-bot-0.5.12-obfuscated.jar
+build/libs/kami-order-bot-0.5.13.jar
+build/libs/kami-order-bot-0.5.13-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -175,9 +176,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.12` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build separates SpawnerProtect `/sell` cleanup
-into two shift-click passes across ticks so the sell GUI can fill more reliably.
+Version `0.5.13` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build restores SpawnerProtect's 0.5.7-style
+mine-store flow while keeping later sell and sneak setting improvements.
 
 ## Known Limitations
 
