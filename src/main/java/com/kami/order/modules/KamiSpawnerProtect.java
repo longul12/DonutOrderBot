@@ -6,6 +6,7 @@ import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.DoubleSetting;
 import meteordevelopment.meteorclient.settings.EnumSetting;
 import meteordevelopment.meteorclient.settings.IntSetting;
+import meteordevelopment.meteorclient.settings.ItemListSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.settings.StringListSetting;
@@ -21,11 +22,14 @@ import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.ShulkerBoxBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.RegistryKey;
@@ -148,6 +152,22 @@ public class KamiSpawnerProtect extends Module {
         .description("Lenh mo GUI sell, khong can dau /. Mac dinh: sell.")
         .defaultValue("sell")
         .visible(autoSellBeforeBreak::get)
+        .build()
+    );
+
+    private final Setting<SellCleanupMode> sellCleanupMode = sgGeneral.add(new EnumSetting.Builder<SellCleanupMode>()
+        .name("sell-cleanup-mode")
+        .description("Safe_Whitelist chi shift-click item trong whitelist de tranh item server khong ban duoc.")
+        .defaultValue(SellCleanupMode.Safe_Whitelist)
+        .visible(autoSellBeforeBreak::get)
+        .build()
+    );
+
+    private final Setting<List<Item>> sellWhitelistItems = sgGeneral.add(new ItemListSetting.Builder()
+        .name("sell-whitelist-items")
+        .description("Chi cac item nay moi duoc shift-click vao GUI sell trong SpawnerProtect.")
+        .defaultValue(List.of(Items.BONE, Items.ARROW, Items.ROTTEN_FLESH, Items.STRING, Items.SPIDER_EYE, Items.GUNPOWDER))
+        .visible(() -> autoSellBeforeBreak.get() && sellCleanupMode.get() == SellCleanupMode.Safe_Whitelist)
         .build()
     );
 
@@ -422,6 +442,7 @@ public class KamiSpawnerProtect extends Module {
             case WAIT_PICKUP -> handleWaitPickup();
             case FIND_ENDER_CHEST -> handleFindEnderChest();
             case PLACE_ENDER_CHEST -> handlePlaceEnderChest();
+            case STOP_SNEAK_BEFORE_OPEN_CHEST -> handleStopSneakBeforeOpenChest();
             case OPEN_ENDER_CHEST -> handleOpenEnderChest();
             case STORE_SPAWNER -> handleStoreSpawner();
             case VERIFY_STORE -> handleVerifyStore();
@@ -740,7 +761,8 @@ public class KamiSpawnerProtect extends Module {
         enderChestPos = findNearestEnderChest();
         if (enderChestPos != null) {
             log("Tim thay Ender Chest gan nhat: " + enderChestPos.toShortString() + ".");
-            state = State.OPEN_ENDER_CHEST;
+            waitTicks = 0;
+            state = State.STOP_SNEAK_BEFORE_OPEN_CHEST;
             scheduleDelay();
             return;
         }
@@ -791,8 +813,27 @@ public class KamiSpawnerProtect extends Module {
         placedEnderChestPos = placePos.toImmutable();
         enderChestPos = placedEnderChestPos;
         log("Da dat Ender Chest tai " + placePos.toShortString() + ".");
-        state = State.OPEN_ENDER_CHEST;
+        waitTicks = 0;
+        state = State.STOP_SNEAK_BEFORE_OPEN_CHEST;
         scheduleDelay();
+    }
+
+    private void handleStopSneakBeforeOpenChest() {
+        sendSneak(false);
+        sneakStarted = false;
+        waitTicks++;
+
+        if (waitTicks == 1) {
+            log("Da nha sneak truoc khi mo Ender Chest.");
+        }
+
+        if (waitTicks < 2) {
+            scheduleFixedDelay(1);
+            return;
+        }
+
+        waitTicks = 0;
+        state = State.OPEN_ENDER_CHEST;
     }
 
     private void handleOpenEnderChest() {
@@ -833,7 +874,8 @@ public class KamiSpawnerProtect extends Module {
 
     private void handleStoreSpawner() {
         if (!isContainerOpen()) {
-            state = State.OPEN_ENDER_CHEST;
+            waitTicks = 0;
+            state = State.STOP_SNEAK_BEFORE_OPEN_CHEST;
             return;
         }
 
@@ -1456,9 +1498,28 @@ public class KamiSpawnerProtect extends Module {
 
     private boolean isSellableCleanupStack(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
-        if (stack.isOf(Items.SPAWNER) || stack.isOf(Items.ENDER_CHEST)) return false;
-        if (isPickaxe(stack)) return false;
+        if (isProtectedSellStack(stack)) return false;
+
+        if (sellCleanupMode.get() == SellCleanupMode.Safe_Whitelist) {
+            List<Item> whitelistItems = sellWhitelistItems.get();
+            if (whitelistItems == null || whitelistItems.isEmpty()) return false;
+            for (Item item : whitelistItems) {
+                if (item != null && stack.isOf(item)) return true;
+            }
+            return false;
+        }
+
         return true;
+    }
+
+    private boolean isProtectedSellStack(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return true;
+        if (stack.isOf(Items.SPAWNER) || stack.isOf(Items.ENDER_CHEST)) return true;
+        if (stack.isOf(Items.BUNDLE) || stack.isOf(Items.ENCHANTED_BOOK)) return true;
+        if (isPickaxe(stack)) return true;
+        if (stack.isDamageable()) return true;
+        if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof ShulkerBoxBlock) return true;
+        return false;
     }
 
     private BlockPos findPlacePosNearPlayer() {
@@ -1647,7 +1708,7 @@ public class KamiSpawnerProtect extends Module {
             case OPEN_SELL_GUI, SELL_ITEMS, VERIFY_SELL_SPACE -> "sell cleanup";
             case BREAK_SPAWNER -> "breaking";
             case WAIT_PICKUP -> "pickup";
-            case FIND_ENDER_CHEST -> "find echest";
+            case FIND_ENDER_CHEST, STOP_SNEAK_BEFORE_OPEN_CHEST -> "find echest";
             case OPEN_ENDER_CHEST -> "open echest";
             case STORE_SPAWNER, VERIFY_STORE -> "store";
             case COMPLETED -> "done";
@@ -1659,6 +1720,11 @@ public class KamiSpawnerProtect extends Module {
     private enum ToolMode {
         Current_Hotbar,
         Best_Hotbar_Tool
+    }
+
+    private enum SellCleanupMode {
+        Safe_Whitelist,
+        Legacy_Broad
     }
 
     private enum State {
@@ -1678,6 +1744,7 @@ public class KamiSpawnerProtect extends Module {
         WAIT_PICKUP,
         FIND_ENDER_CHEST,
         PLACE_ENDER_CHEST,
+        STOP_SNEAK_BEFORE_OPEN_CHEST,
         OPEN_ENDER_CHEST,
         STORE_SPAWNER,
         VERIFY_STORE,

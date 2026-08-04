@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.7.jar
+build/libs/kami-order-bot-0.5.8.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.7-obfuscated.jar
+build/libs/kami-order-bot-0.5.8-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -135,9 +135,13 @@ handlers, enum constants, and reflection.
 - Fabric metadata uses Gradle resource expansion for `${version}`.
 - SpawnerProtect `/sell` cleanup intentionally uses its own fixed tick waits
   (`sell-open-delay`, `sell-close-delay`, `sell-pickup-wait`) instead of the
-  randomized module `delay`; it should shift-click all sellable inventory stacks
-  into the sell GUI twice. Do not replace this with a Sell All/Dump All button
-  click unless the server GUI flow is deliberately changed.
+  randomized module `delay`; it should shift-click sellable inventory stacks
+  into the sell GUI twice. The default `sell-cleanup-mode` is `Safe_Whitelist`;
+  unknown items, spawners, ender chests, damageable gear, bundles, enchanted
+  books, and shulker boxes must not be shifted into `/sell`.
+- SpawnerProtect must release sneak before opening Ender Chest. Toggle-sneak
+  client settings can otherwise keep the player sneaking and prevent chest GUI
+  open/interact behavior.
 - When SpawnerProtect takes over because of a threat, it may close an existing
   OrderBot/SpawnerDrop GUI up to three times before acquiring GUI ownership.
 - SpawnerDrop stop-item handling must keep the Sell All step. The intended flow
