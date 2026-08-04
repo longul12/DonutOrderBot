@@ -772,7 +772,23 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
+        if (waitTicks > 5 && hasSpawnerInInventory()) {
+            log("Phat hien Spawner trong inventory sau khi dap - di cat Ender Chest.");
+            waitTicks = 0;
+            state = State.FIND_ENDER_CHEST;
+            scheduleDelay();
+            return;
+        }
+
         if (waitTicks > waitPickupTimeout.get()) {
+            if (hasSpawnerInInventory()) {
+                warning("Timeout dem pickup nhung inventory co Spawner - van di cat Ender Chest.");
+                waitTicks = 0;
+                state = State.FIND_ENDER_CHEST;
+                scheduleDelay();
+                return;
+            }
+
             warning("Timeout cho Spawner vao inventory - tim Spawner tiep theo neu con.");
             afterOneSpawnerCycle();
         }
