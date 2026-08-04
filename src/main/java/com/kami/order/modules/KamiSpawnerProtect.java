@@ -975,11 +975,14 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        if (refreshTargetSpawner(false) && (autoRunWithoutThreat.get() || findThreat() != null)) {
-            if (!ensureProtectGuiOwner(findThreat() != null)) {
+        if (refreshTargetSpawner(true)) {
+            PlayerEntity threat = findThreat();
+            if (!ensureProtectGuiOwner(threat != null)) {
                 state = State.SCAN_PLAYERS;
                 return;
             }
+            confirmedThreat = threat;
+            log("Keep-running: tim thay Spawner tiep theo " + targetSpawnerPos.toShortString() + " - tiep tuc dap va cat.");
             state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
         } else {
             releaseProtectGuiOwner();
