@@ -48,6 +48,8 @@ the Minecraft mods folder to avoid duplicate module registration.
 - `KamiSpawnerProtect` has separate sell cleanup timing settings
   (`sell-open-delay`, `sell-close-delay`, `sell-pickup-wait`) so `/sell` can run
   faster than the module's normal action delay while still waiting for GUI sync.
+- `KamiSpawnerProtect` runs `/sell` cleanup in two separated shift-click passes
+  so the server GUI can sync before the second fill pass.
 - `KamiSpawnerProtect` releases sneak before opening Ender Chest so toggle-sneak
   key settings do not block the chest GUI after breaking a spawner.
 - `KamiSpawnerProtect` has `sneak-control-mode` with `Hold` and `Toggle` so the
@@ -107,7 +109,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.11.jar
+build/libs/kami-order-bot-0.5.12.jar
 ```
 
 ## Maintainer Release Build
@@ -127,8 +129,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.11.jar
-build/libs/kami-order-bot-0.5.11-obfuscated.jar
+build/libs/kami-order-bot-0.5.12.jar
+build/libs/kami-order-bot-0.5.12-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -173,9 +175,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.11` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build adds `sneak-control-mode` to
-SpawnerProtect so users can choose `Hold` or `Toggle` sneak handling.
+Version `0.5.12` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build separates SpawnerProtect `/sell` cleanup
+into two shift-click passes across ticks so the sell GUI can fill more reliably.
 
 ## Known Limitations
 

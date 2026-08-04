@@ -454,6 +454,7 @@ public class KamiSpawnerProtect extends Module {
             case ENSURE_INVENTORY_SPACE -> handleEnsureInventorySpace();
             case OPEN_SELL_GUI -> handleOpenSellGui();
             case SELL_ITEMS -> handleSellItems();
+            case SELL_ITEMS_SECOND_PASS -> handleSellItemsSecondPass();
             case VERIFY_SELL_SPACE -> handleVerifySellSpace();
             case BREAK_SPAWNER -> handleBreakSpawner();
             case WAIT_PICKUP -> handleWaitPickup();
@@ -724,8 +725,21 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        int moved = quickMoveSellableItems(2);
-        log("Da shift-click tat ca item ban duoc vao GUI sell 2 lan, tong " + moved + " stack.");
+        int moved = quickMoveSellableItems(1);
+        log("Da shift-click item ban duoc vao GUI sell lan 1, tong " + moved + " stack.");
+        state = State.SELL_ITEMS_SECOND_PASS;
+        scheduleFixedDelay(1);
+    }
+
+    private void handleSellItemsSecondPass() {
+        if (!isContainerOpen()) {
+            waitTicks = 0;
+            state = State.OPEN_SELL_GUI;
+            return;
+        }
+
+        int moved = quickMoveSellableItems(1);
+        log("Da shift-click item ban duoc vao GUI sell lan 2, tong " + moved + " stack.");
         sellVerifyTicks = 0;
         state = State.VERIFY_SELL_SPACE;
         scheduleFixedDelay(sellCloseDelay.get());
@@ -1825,7 +1839,7 @@ public class KamiSpawnerProtect extends Module {
             case ARMED, SCAN_PLAYERS -> targetSpawnerPos == null ? "armed" : targetSpawnerPos.toShortString();
             case THREAT_CONFIRM -> confirmedThreat == null ? "confirm" : confirmedThreat.getName().getString();
             case MOVE_TO_SPAWNER -> "walk";
-            case OPEN_SELL_GUI, SELL_ITEMS, VERIFY_SELL_SPACE -> "sell cleanup";
+            case OPEN_SELL_GUI, SELL_ITEMS, SELL_ITEMS_SECOND_PASS, VERIFY_SELL_SPACE -> "sell cleanup";
             case BREAK_SPAWNER -> "breaking";
             case WAIT_PICKUP -> "pickup";
             case FIND_ENDER_CHEST, STOP_SNEAK_BEFORE_OPEN_CHEST -> "find echest";
@@ -1864,6 +1878,7 @@ public class KamiSpawnerProtect extends Module {
         ENSURE_INVENTORY_SPACE,
         OPEN_SELL_GUI,
         SELL_ITEMS,
+        SELL_ITEMS_SECOND_PASS,
         VERIFY_SELL_SPACE,
         BREAK_SPAWNER,
         WAIT_PICKUP,

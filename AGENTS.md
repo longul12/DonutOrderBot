@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.11.jar
+build/libs/kami-order-bot-0.5.12.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.11-obfuscated.jar
+build/libs/kami-order-bot-0.5.12-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -139,6 +139,9 @@ handlers, enum constants, and reflection.
   into the sell GUI twice. The default `sell-cleanup-mode` is `Safe_Whitelist`;
   unknown items, spawners, ender chests, damageable gear, bundles, enchanted
   books, and shulker boxes must not be shifted into `/sell`.
+- Keep SpawnerProtect `/sell` cleanup split into two shifted passes across
+  separate ticks; doing both passes in the same tick may only fill half the GUI
+  on the server.
 - SpawnerProtect must release sneak before opening Ender Chest. Toggle-sneak
   client settings can otherwise keep the player sneaking and prevent chest GUI
   open/interact behavior. Use `sneak-control-mode` to match the user's Minecraft
