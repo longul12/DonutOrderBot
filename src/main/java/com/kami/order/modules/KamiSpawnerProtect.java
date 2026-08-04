@@ -862,6 +862,13 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
+        if (mc.player.isSneaking()) {
+            sendSneak(false);
+            sneakStarted = false;
+            scheduleFixedDelay(1);
+            return;
+        }
+
         BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(enderChestPos), Direction.UP, enderChestPos, false);
         if (rotate.get()) Rotations.rotate(Rotations.getYaw(Vec3d.ofCenter(enderChestPos)), Rotations.getPitch(Vec3d.ofCenter(enderChestPos)), 50);
         mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);

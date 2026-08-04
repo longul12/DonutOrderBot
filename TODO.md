@@ -255,6 +255,15 @@
     Later sell cleanup and sneak-control settings remain. Version bumped to
     `0.5.13`.
 
+- Description: Prevent SpawnerProtect from opening Ender Chest while still sneaking.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: `OPEN_ENDER_CHEST` now checks `mc.player.isSneaking()` and waits one
+    tick after `sendSneak(false)` before interacting with Ender Chest. Version
+    bumped to `0.5.14`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -270,7 +279,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.13-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.14-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

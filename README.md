@@ -57,6 +57,8 @@ the Minecraft mods folder to avoid duplicate module registration.
 - `KamiSpawnerProtect` uses the 0.5.7-style protect flow: sneak while breaking,
   release sneak once the spawner block is gone, then pick up and store in Ender
   Chest before continuing.
+- Before interacting with Ender Chest, `KamiSpawnerProtect` now checks
+  `mc.player.isSneaking()` and waits a tick after forcing sneak off.
 - Includes GUI ownership guards shared with SpawnerDrop.
 - Includes a `MouseLockMixin` that prevents Minecraft from grabbing the mouse
   while a bot is running. It does not warp or click the system cursor.
@@ -110,7 +112,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.13.jar
+build/libs/kami-order-bot-0.5.14.jar
 ```
 
 ## Maintainer Release Build
@@ -130,8 +132,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.13.jar
-build/libs/kami-order-bot-0.5.13-obfuscated.jar
+build/libs/kami-order-bot-0.5.14.jar
+build/libs/kami-order-bot-0.5.14-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -176,9 +178,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.13` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build restores SpawnerProtect's 0.5.7-style
-mine-store flow while keeping later sell and sneak setting improvements.
+Version `0.5.14` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build keeps SpawnerProtect's 0.5.7-style flow
+but refuses to open Ender Chest while the player is still sneaking.
 
 ## Known Limitations
 
