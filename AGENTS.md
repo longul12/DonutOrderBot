@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.20.jar
+build/libs/kami-order-bot-0.5.19.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.20-obfuscated.jar
+build/libs/kami-order-bot-0.5.19-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -142,10 +142,6 @@ handlers, enum constants, and reflection.
 - Keep SpawnerProtect `/sell` cleanup split into two shifted passes across
   separate ticks; doing both passes in the same tick may only fill half the GUI
   on the server.
-- Ground item safety for SpawnerProtect must count only item entities close
-  enough to pick up. `ground-item-check-radius` is capped by
-  `ground-item-pickup-radius` so far visible drops do not cause repeated `/sell`
-  loops with no inventory progress.
 - SpawnerProtect uses the old 0.5.7-style mine-store flow: sneak only while
   breaking a spawner, release sneak when the block is gone, wait for pickup,
   open Ender Chest, store, then continue. Do not reintroduce batch storage
