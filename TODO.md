@@ -336,6 +336,16 @@
     few ticks, chooses the hit side nearest the player, then waits for the GUI
     and retries up to a bounded attempt count. Version bumped to `0.5.21`.
 
+- Description: Add SpawnerProtect sneak mode for Hold and Toggle key behavior.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Added `sneak-mode`. `Hold` keeps the direct press/release behavior;
+    `Toggle` taps the sneak key across ticks and waits before Ender Chest
+    interaction so toggle-sneak users can unsneak before opening storage.
+    Version bumped to `0.5.22`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -351,7 +361,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.21-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.22-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

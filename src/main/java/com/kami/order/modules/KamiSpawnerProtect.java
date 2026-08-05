@@ -79,6 +79,13 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
+    private final Setting<SneakMode> sneakMode = sgGeneral.add(new EnumSetting.Builder<SneakMode>()
+        .name("sneak-mode")
+        .description("Chon Hold neu Minecraft sneak la giu phim, Toggle neu sneak la bam doi trang thai.")
+        .defaultValue(SneakMode.Hold)
+        .build()
+    );
+
     private final Setting<Boolean> rotate = sgGeneral.add(new BoolSetting.Builder()
         .name("rotate")
         .description("Xoay ve Spawner / Ender Chest bang rotation packet cua Meteor.")
@@ -356,6 +363,7 @@ public class KamiSpawnerProtect extends Module {
     private int forcedGuiCloseAttempts;
     private int openChestPrepareTicks;
     private int openChestAttempts;
+    private int sneakTapTicks;
 
     public KamiSpawnerProtect() {
         super(Categories.Misc, "kami-spawner-protect",
@@ -419,6 +427,7 @@ public class KamiSpawnerProtect extends Module {
         forcedGuiCloseAttempts = 0;
         openChestPrepareTicks = 0;
         openChestAttempts = 0;
+        sneakTapTicks = 0;
     }
 
     @EventHandler
@@ -427,6 +436,7 @@ public class KamiSpawnerProtect extends Module {
             state = State.ERROR;
             return;
         }
+        tickSneakTap();
         if (cooldown > 0) {
             cooldown--;
             return;
@@ -875,6 +885,11 @@ public class KamiSpawnerProtect extends Module {
         }
 
         forceStopInputBeforeChestOpen();
+        if (sneakMode.get() == SneakMode.Toggle && (sneakTapTicks > 0 || mc.player.isSneaking())) {
+            scheduleFixedDelay(1);
+            return;
+        }
+
         openChestPrepareTicks++;
         if (openChestPrepareTicks < OPEN_CHEST_PREPARE_TICKS) {
             scheduleFixedDelay(1);
@@ -1087,6 +1102,7 @@ public class KamiSpawnerProtect extends Module {
         if (mc.player == null || mc.interactionManager == null) return;
         stopPathingToSpawner();
         stopTemporarySneak();
+        releaseSneakTap();
         restoreMovedTool();
         restoreMovedEnderChest();
         if (originalSlot >= 0 && originalSlot <= 8) InvUtils.swap(originalSlot, false);
@@ -1741,8 +1757,33 @@ public class KamiSpawnerProtect extends Module {
     private void sendSneak(boolean sneak) {
         ClientPlayerEntity player = mc.player;
         if (player == null) return;
+        if (sneakMode.get() == SneakMode.Toggle) {
+            if (mc.options != null && mc.options.sneakKey != null) {
+                if (sneakTapTicks <= 0 && player.isSneaking() != sneak) {
+                    mc.options.sneakKey.setPressed(true);
+                    sneakTapTicks = 2;
+                }
+            }
+            player.setSneaking(sneak);
+            return;
+        }
+
+        sneakTapTicks = 0;
         if (mc.options != null && mc.options.sneakKey != null) mc.options.sneakKey.setPressed(sneak);
         player.setSneaking(sneak);
+    }
+
+    private void tickSneakTap() {
+        if (sneakTapTicks <= 0) return;
+        sneakTapTicks--;
+        if (sneakTapTicks == 0 && mc.options != null && mc.options.sneakKey != null) {
+            mc.options.sneakKey.setPressed(false);
+        }
+    }
+
+    private void releaseSneakTap() {
+        sneakTapTicks = 0;
+        if (mc.options != null && mc.options.sneakKey != null) mc.options.sneakKey.setPressed(false);
     }
 
     private void forceStopInputBeforeChestOpen() {
@@ -1830,6 +1871,11 @@ public class KamiSpawnerProtect extends Module {
     private enum ToolMode {
         Current_Hotbar,
         Best_Hotbar_Tool
+    }
+
+    private enum SneakMode {
+        Hold,
+        Toggle
     }
 
     private enum SellCleanupMode {

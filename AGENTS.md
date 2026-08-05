@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.21.jar
+build/libs/kami-order-bot-0.5.22.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.21-obfuscated.jar
+build/libs/kami-order-bot-0.5.22-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -153,6 +153,9 @@ handlers, enum constants, and reflection.
   presses/releases the sneak key directly and sets `player.setSneaking(...)`.
   Ender Chest opening should stay as direct `interactBlock` unless fresh
   in-game validation proves another flow is safer.
+- For users with Minecraft sneak configured as Toggle, set SpawnerProtect
+  `sneak-mode` to `Toggle`. That path taps the sneak key across ticks and waits
+  in `PREPARE_OPEN_ENDER_CHEST` until the tap/unsneak phase finishes.
 - Ender Chest opening uses `PREPARE_OPEN_ENDER_CHEST`, `OPEN_ENDER_CHEST`, and
   `WAIT_ENDER_CHEST_GUI`. Preserve the input cleanup and bounded retry split;
   do not collapse it back into one tick of `interactBlock`.
