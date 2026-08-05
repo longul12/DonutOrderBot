@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.16.jar
+build/libs/kami-order-bot-0.5.17.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.16-obfuscated.jar
+build/libs/kami-order-bot-0.5.17-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -142,22 +142,19 @@ handlers, enum constants, and reflection.
 - Keep SpawnerProtect `/sell` cleanup split into two shifted passes across
   separate ticks; doing both passes in the same tick may only fill half the GUI
   on the server.
-- SpawnerProtect must release sneak before opening Ender Chest. Toggle-sneak
-  client settings can otherwise keep the player sneaking and prevent chest GUI
-  open/interact behavior. Use `sneak-control-mode` to match the user's Minecraft
-  sneak key behavior (`Hold` or `Toggle`).
 - SpawnerProtect uses the old 0.5.7-style mine-store flow: sneak only while
   breaking a spawner, release sneak when the block is gone, wait for pickup,
   open Ender Chest, store, then continue. Do not reintroduce batch storage
   without fresh in-game validation.
+- Keep SpawnerProtect sneak control in the old hold-style flow: `sendSneak`
+  presses/releases the sneak key directly and sets `player.setSneaking(...)`.
+  Ender Chest opening should stay as direct `interactBlock` unless fresh
+  in-game validation proves another flow is safer.
 - After storing, `keep-running` should continue to the next nearby spawner found
   by `refreshTargetSpawner(true)` even if the original threat has left.
 - During `WAIT_PICKUP`, do not rely only on `hasNewSpawnerPickedUp()`. If any
   spawner is already in inventory after a few ticks, continue to Ender Chest
   storage so counter/sync edge cases do not skip storage.
-- Before interacting with Ender Chest, SpawnerProtect must check
-  `mc.player.isSneaking()`. If true, call `sendSneak(false)`, wait a tick, and
-  only then try `interactBlock`.
 - When SpawnerProtect takes over because of a threat, it may close an existing
   OrderBot/SpawnerDrop GUI up to three times before acquiring GUI ownership.
 - SpawnerDrop stop-item handling must keep the Sell All step. The intended flow

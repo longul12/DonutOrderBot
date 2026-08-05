@@ -50,19 +50,13 @@ the Minecraft mods folder to avoid duplicate module registration.
   faster than the module's normal action delay while still waiting for GUI sync.
 - `KamiSpawnerProtect` runs `/sell` cleanup in two separated shift-click passes
   so the server GUI can sync before the second fill pass.
-- `KamiSpawnerProtect` releases sneak before opening Ender Chest so toggle-sneak
-  key settings do not block the chest GUI after breaking a spawner.
-- `KamiSpawnerProtect` has `sneak-control-mode` with `Hold` and `Toggle` so the
-  module can match the user's Minecraft sneak key behavior.
 - `KamiSpawnerProtect` uses the 0.5.7-style protect flow: sneak while breaking,
-  release sneak once the spawner block is gone, then pick up and store in Ender
-  Chest before continuing.
+  release sneak once the spawner block is gone, then pick up and open the Ender
+  Chest with direct `interactBlock` storage before continuing.
 - With `keep-running`, `KamiSpawnerProtect` continues to the next nearby spawner
   after storage even if the original threat is no longer detected.
 - During pickup wait, `KamiSpawnerProtect` stores any spawner found in inventory
   even if the new-pickup counter did not increase.
-- Before interacting with Ender Chest, `KamiSpawnerProtect` now checks
-  `mc.player.isSneaking()` and waits a tick after forcing sneak off.
 - Includes GUI ownership guards shared with SpawnerDrop.
 - Includes a `MouseLockMixin` that prevents Minecraft from grabbing the mouse
   while a bot is running. It does not warp or click the system cursor.
@@ -116,7 +110,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.16.jar
+build/libs/kami-order-bot-0.5.17.jar
 ```
 
 ## Maintainer Release Build
@@ -136,8 +130,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.16.jar
-build/libs/kami-order-bot-0.5.16-obfuscated.jar
+build/libs/kami-order-bot-0.5.17.jar
+build/libs/kami-order-bot-0.5.17-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -182,9 +176,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.16` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build makes SpawnerProtect store spawners found
-in inventory during pickup wait even when the pickup counter does not increase.
+Version `0.5.17` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build restores the old 0.5.7-style hold-sneak and
+direct Ender Chest open behavior while keeping later sell cleanup, pickup, and
+keep-running improvements.
 
 ## Known Limitations
 

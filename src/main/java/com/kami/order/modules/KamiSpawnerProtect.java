@@ -92,13 +92,6 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
-    private final Setting<SneakControlMode> sneakControlMode = sgGeneral.add(new EnumSetting.Builder<SneakControlMode>()
-        .name("sneak-control-mode")
-        .description("Hold dung phim sneak dang giu. Toggle dung cho client cai sneak la chuyen trang thai.")
-        .defaultValue(SneakControlMode.Hold)
-        .build()
-    );
-
     private final Setting<Integer> protectRadius = sgGeneral.add(new IntSetting.Builder()
         .name("protect-radius")
         .description("Ban kinh don/cat cac Spawner quanh target da chon.")
@@ -875,13 +868,6 @@ public class KamiSpawnerProtect extends Module {
         if (mc.player.squaredDistanceTo(Vec3d.ofCenter(enderChestPos)) > MAX_INTERACT_RANGE_SQ) {
             error("Ender Chest ngoai tam interact - khong tu di bo/pathfind, giu Spawner trong inventory.");
             state = State.ERROR;
-            return;
-        }
-
-        if (mc.player.isSneaking()) {
-            sendSneak(false);
-            sneakStarted = false;
-            scheduleFixedDelay(1);
             return;
         }
 
@@ -1677,17 +1663,7 @@ public class KamiSpawnerProtect extends Module {
     private void sendSneak(boolean sneak) {
         ClientPlayerEntity player = mc.player;
         if (player == null) return;
-
-        if (mc.options != null && mc.options.sneakKey != null) {
-            if (sneakControlMode.get() == SneakControlMode.Toggle) {
-                if (player.isSneaking() != sneak) {
-                    mc.options.sneakKey.setPressed(true);
-                    mc.options.sneakKey.setPressed(false);
-                }
-            } else {
-                mc.options.sneakKey.setPressed(sneak);
-            }
-        }
+        if (mc.options != null && mc.options.sneakKey != null) mc.options.sneakKey.setPressed(sneak);
         player.setSneaking(sneak);
     }
 
@@ -1761,11 +1737,6 @@ public class KamiSpawnerProtect extends Module {
     private enum SellCleanupMode {
         Safe_Whitelist,
         Legacy_Broad
-    }
-
-    private enum SneakControlMode {
-        Hold,
-        Toggle
     }
 
     private enum State {

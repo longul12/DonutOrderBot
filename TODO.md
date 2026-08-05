@@ -283,6 +283,16 @@
     if `countSpawnersInPlayerInventory() > spawnerCountBeforeBreak` does not
     become true. Version bumped to `0.5.16`.
 
+- Description: Restore old SpawnerProtect Ender Chest sneak/open behavior.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Removed `sneak-control-mode` and the pre-open
+    `mc.player.isSneaking()` wait. `sendSneak` is back to direct hold-style key
+    press/release and Ender Chest opening uses the old direct `interactBlock`
+    path. Version bumped to `0.5.17`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -298,7 +308,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.16-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.17-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
