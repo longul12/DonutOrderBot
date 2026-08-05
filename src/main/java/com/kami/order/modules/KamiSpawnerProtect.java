@@ -63,6 +63,9 @@ public class KamiSpawnerProtect extends Module {
     private static final double MAX_ENDER_CHEST_RANGE_SQ = MAX_ENDER_CHEST_RANGE * MAX_ENDER_CHEST_RANGE;
     private static final double MAX_INTERACT_RANGE_SQ = 36.0;
     private static final int FORCED_GUI_CLOSE_ATTEMPTS = 3;
+    private static final int OPEN_CHEST_PREPARE_TICKS = 3;
+    private static final int OPEN_CHEST_RETRY_TICKS = 6;
+    private static final int OPEN_CHEST_MAX_ATTEMPTS = 5;
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgThreat = settings.createGroup("Threat");
@@ -351,6 +354,8 @@ public class KamiSpawnerProtect extends Module {
     private int sellCleanupAttempts;
     private int sellVerifyTicks;
     private int forcedGuiCloseAttempts;
+    private int openChestPrepareTicks;
+    private int openChestAttempts;
 
     public KamiSpawnerProtect() {
         super(Categories.Misc, "kami-spawner-protect",
@@ -412,6 +417,8 @@ public class KamiSpawnerProtect extends Module {
         sellCleanupAttempts = 0;
         sellVerifyTicks = 0;
         forcedGuiCloseAttempts = 0;
+        openChestPrepareTicks = 0;
+        openChestAttempts = 0;
     }
 
     @EventHandler
@@ -443,7 +450,9 @@ public class KamiSpawnerProtect extends Module {
             case WAIT_PICKUP -> handleWaitPickup();
             case FIND_ENDER_CHEST -> handleFindEnderChest();
             case PLACE_ENDER_CHEST -> handlePlaceEnderChest();
+            case PREPARE_OPEN_ENDER_CHEST -> handlePrepareOpenEnderChest();
             case OPEN_ENDER_CHEST -> handleOpenEnderChest();
+            case WAIT_ENDER_CHEST_GUI -> handleWaitEnderChestGui();
             case STORE_SPAWNER -> handleStoreSpawner();
             case VERIFY_STORE -> handleVerifyStore();
             case RESTORE_STATE -> handleRestoreState();
@@ -791,7 +800,7 @@ public class KamiSpawnerProtect extends Module {
         enderChestPos = findNearestEnderChest();
         if (enderChestPos != null) {
             log("Tim thay Ender Chest gan nhat: " + enderChestPos.toShortString() + ".");
-            state = State.OPEN_ENDER_CHEST;
+            beginOpenEnderChestSequence();
             scheduleDelay();
             return;
         }
@@ -842,8 +851,39 @@ public class KamiSpawnerProtect extends Module {
         placedEnderChestPos = placePos.toImmutable();
         enderChestPos = placedEnderChestPos;
         log("Da dat Ender Chest tai " + placePos.toShortString() + ".");
-        state = State.OPEN_ENDER_CHEST;
+        beginOpenEnderChestSequence();
         scheduleDelay();
+    }
+
+    private void beginOpenEnderChestSequence() {
+        openChestPrepareTicks = 0;
+        openChestAttempts = 0;
+        waitTicks = 0;
+        state = State.PREPARE_OPEN_ENDER_CHEST;
+    }
+
+    private void handlePrepareOpenEnderChest() {
+        if (enderChestPos == null) {
+            state = State.FIND_ENDER_CHEST;
+            return;
+        }
+
+        if (isContainerOpen()) {
+            closeScreen();
+            scheduleFixedDelay(1);
+            return;
+        }
+
+        forceStopInputBeforeChestOpen();
+        openChestPrepareTicks++;
+        if (openChestPrepareTicks < OPEN_CHEST_PREPARE_TICKS) {
+            scheduleFixedDelay(1);
+            return;
+        }
+
+        waitTicks = 0;
+        state = State.OPEN_ENDER_CHEST;
+        scheduleFixedDelay(1);
     }
 
     private void handleOpenEnderChest() {
@@ -871,20 +911,52 @@ public class KamiSpawnerProtect extends Module {
             return;
         }
 
-        BlockHitResult hit = new BlockHitResult(Vec3d.ofCenter(enderChestPos), Direction.UP, enderChestPos, false);
-        if (rotate.get()) Rotations.rotate(Rotations.getYaw(Vec3d.ofCenter(enderChestPos)), Rotations.getPitch(Vec3d.ofCenter(enderChestPos)), 50);
+        forceStopInputBeforeChestOpen();
+        Direction side = getBestEnderChestInteractSide(enderChestPos);
+        Vec3d hitPos = Vec3d.ofCenter(enderChestPos).add(
+            side.getOffsetX() * 0.5,
+            side.getOffsetY() * 0.5,
+            side.getOffsetZ() * 0.5
+        );
+        BlockHitResult hit = new BlockHitResult(hitPos, side, enderChestPos, false);
+        if (rotate.get()) Rotations.rotate(Rotations.getYaw(hitPos), Rotations.getPitch(hitPos), 50);
         mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
-        waitTicks++;
-        if (waitTicks > guiWaitTimeout.get()) {
-            error("Timeout mo Ender Chest GUI - giu Spawner trong inventory.");
-            state = State.ERROR;
+        openChestAttempts++;
+        waitTicks = 0;
+        state = State.WAIT_ENDER_CHEST_GUI;
+        log("Da interact Ender Chest lan " + openChestAttempts + "/" + OPEN_CHEST_MAX_ATTEMPTS + ".");
+        scheduleFixedDelay(1);
+    }
+
+    private void handleWaitEnderChestGui() {
+        if (isContainerOpen()) {
+            waitTicks = 0;
+            state = State.STORE_SPAWNER;
+            return;
         }
-        scheduleDelay();
+
+        waitTicks++;
+        if (waitTicks < OPEN_CHEST_RETRY_TICKS) {
+            scheduleFixedDelay(1);
+            return;
+        }
+
+        if (openChestAttempts >= OPEN_CHEST_MAX_ATTEMPTS || openChestAttempts * OPEN_CHEST_RETRY_TICKS > guiWaitTimeout.get()) {
+            String screenName = mc.currentScreen == null ? "none" : mc.currentScreen.getClass().getSimpleName();
+            error("Timeout mo Ender Chest GUI sau " + openChestAttempts + " lan interact. screen=" + screenName
+                + ", sneaking=" + mc.player.isSneaking() + ", pos=" + enderChestPos.toShortString() + ".");
+            state = State.ERROR;
+            return;
+        }
+
+        state = State.PREPARE_OPEN_ENDER_CHEST;
+        openChestPrepareTicks = Math.max(0, OPEN_CHEST_PREPARE_TICKS - 1);
+        scheduleFixedDelay(1);
     }
 
     private void handleStoreSpawner() {
         if (!isContainerOpen()) {
-            state = State.OPEN_ENDER_CHEST;
+            beginOpenEnderChestSequence();
             return;
         }
 
@@ -1673,6 +1745,26 @@ public class KamiSpawnerProtect extends Module {
         player.setSneaking(sneak);
     }
 
+    private void forceStopInputBeforeChestOpen() {
+        sendSneak(false);
+        sneakStarted = false;
+        if (mc.options == null) return;
+        if (mc.options.attackKey != null) mc.options.attackKey.setPressed(false);
+        if (mc.options.useKey != null) mc.options.useKey.setPressed(false);
+    }
+
+    private Direction getBestEnderChestInteractSide(BlockPos pos) {
+        if (mc.player == null) return Direction.UP;
+        Vec3d delta = mc.player.getEyePos().subtract(Vec3d.ofCenter(pos));
+        double ax = Math.abs(delta.x);
+        double ay = Math.abs(delta.y);
+        double az = Math.abs(delta.z);
+
+        if (ay >= ax && ay >= az) return delta.y >= 0 ? Direction.UP : Direction.DOWN;
+        if (ax >= az) return delta.x >= 0 ? Direction.EAST : Direction.WEST;
+        return delta.z >= 0 ? Direction.SOUTH : Direction.NORTH;
+    }
+
     private void clickSlot(int slotId, int button, SlotActionType type) {
         if (mc.player == null || mc.interactionManager == null) return;
         if (!isActive() || !ownsGui()) return;
@@ -1727,7 +1819,7 @@ public class KamiSpawnerProtect extends Module {
             case BREAK_SPAWNER -> "breaking";
             case WAIT_PICKUP -> "pickup";
             case FIND_ENDER_CHEST -> "find echest";
-            case OPEN_ENDER_CHEST -> "open echest";
+            case PREPARE_OPEN_ENDER_CHEST, OPEN_ENDER_CHEST, WAIT_ENDER_CHEST_GUI -> "open echest";
             case STORE_SPAWNER, VERIFY_STORE -> "store";
             case COMPLETED -> "done";
             case ERROR -> "error";
@@ -1763,7 +1855,9 @@ public class KamiSpawnerProtect extends Module {
         WAIT_PICKUP,
         FIND_ENDER_CHEST,
         PLACE_ENDER_CHEST,
+        PREPARE_OPEN_ENDER_CHEST,
         OPEN_ENDER_CHEST,
+        WAIT_ENDER_CHEST_GUI,
         STORE_SPAWNER,
         VERIFY_STORE,
         RESTORE_STATE,

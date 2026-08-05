@@ -54,6 +54,9 @@ the Minecraft mods folder to avoid duplicate module registration.
 - `KamiSpawnerProtect` uses the 0.5.7-style protect flow: sneak while breaking,
   release sneak once the spawner block is gone, then pick up and open the Ender
   Chest with direct `interactBlock` storage before continuing.
+- `KamiSpawnerProtect` opens Ender Chest through a lag-tolerant prepare/open/wait
+  retry flow that forces sneak, attack, and use inputs off before each
+  `interactBlock` attempt.
 - With `keep-running`, `KamiSpawnerProtect` continues to the next nearby spawner
   after storage even if the original threat is no longer detected.
 - During pickup wait, `KamiSpawnerProtect` stores any spawner found in inventory
@@ -111,7 +114,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.20.jar
+build/libs/kami-order-bot-0.5.21.jar
 ```
 
 ## Maintainer Release Build
@@ -131,8 +134,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.20.jar
-build/libs/kami-order-bot-0.5.20-obfuscated.jar
+build/libs/kami-order-bot-0.5.21.jar
+build/libs/kami-order-bot-0.5.21-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -177,10 +180,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.20` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build changes SpawnerProtect `/sell`
-cleanup so it only runs when player inventory has sellable stacks and stops as
-soon as the configured empty-slot requirement is met.
+Version `0.5.21` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build adds a lag-tolerant Ender Chest open
+flow with input cleanup, hit-side selection, GUI wait, and bounded retries.
 
 ## Known Limitations
 

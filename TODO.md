@@ -326,6 +326,16 @@
     available. Ground item entities no longer cause repeated `/sell` loops.
     Version bumped to `0.5.20`.
 
+- Description: Make SpawnerProtect Ender Chest opening lag-tolerant.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Added `PREPARE_OPEN_ENDER_CHEST` and `WAIT_ENDER_CHEST_GUI`. Before
+    each `interactBlock`, Protect forces sneak/use/attack inputs off, waits a
+    few ticks, chooses the hit side nearest the player, then waits for the GUI
+    and retries up to a bounded attempt count. Version bumped to `0.5.21`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -341,7 +351,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.20-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.21-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
