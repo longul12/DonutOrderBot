@@ -18,7 +18,8 @@ the Minecraft mods folder to avoid duplicate module registration.
 ## Current Features
 
 - Select target item with Meteor `ItemListSetting`.
-- Optional manual item name mode.
+- Optional manual item name mode, with fallback to the selected item list entry
+  when the manual name is blank.
 - Sends `/order <item-or-player-name>`.
 - Can order by a configured player list with one shared order count per player.
 - Can load the player list from `config/kami-order-player-list.txt`, one name
@@ -116,7 +117,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.22.jar
+build/libs/kami-order-bot-0.5.23.jar
 ```
 
 ## Maintainer Release Build
@@ -136,8 +137,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.22.jar
-build/libs/kami-order-bot-0.5.22-obfuscated.jar
+build/libs/kami-order-bot-0.5.23.jar
+build/libs/kami-order-bot-0.5.23-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -182,10 +183,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.22` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build adds SpawnerProtect `sneak-mode` so
-users with Minecraft sneak set to Toggle can use tap-based sneak control before
-Ender Chest opening.
+Version `0.5.23` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build makes OrderBot fall back to the
+selected `target-item` when `Manual_String` mode has a blank manual name.
 
 ## Known Limitations
 

@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.22.jar
+build/libs/kami-order-bot-0.5.23.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.22-obfuscated.jar
+build/libs/kami-order-bot-0.5.23-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -176,4 +176,7 @@ handlers, enum constants, and reflection.
   read names from the Meteor `order-player-list` setting or from
   `config/kami-order-player-list.txt` when `player-list-source` is `Txt_File`.
   Keep the old `Single_Player` path as the default fallback behavior.
+- In OrderBot `Manual_String` target mode, a blank `manual-order-name` must
+  fall back to the selected `target-item` list entry so users who configured the
+  item list are not blocked by the generic missing `/order` argument error.
 - There are no tests; build and in-game verification are both important.

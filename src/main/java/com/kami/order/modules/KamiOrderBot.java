@@ -1766,8 +1766,12 @@ public class KamiOrderBot extends Module {
     private String getTargetItemFilterName() {
         if (targetMode.get() == TargetMode.Manual_String) {
             String raw = manualOrderName.get();
-            return raw == null ? "" : raw.trim();
+            if (raw != null && !raw.isBlank()) return raw.trim();
         }
+        return getListItemFilterName();
+    }
+
+    private String getListItemFilterName() {
         Item item = getListItem();
         if (item == null || item == Items.AIR) return "";
         try {
@@ -1781,7 +1785,8 @@ public class KamiOrderBot extends Module {
     /** Item dùng để khớp inventory khi dump (list hoặc resolve từ manual string). */
     private Item getDepositItem() {
         if (targetMode.get() == TargetMode.Manual_String) {
-            return resolveItemFromName(manualOrderName.get());
+            Item manual = resolveItemFromName(manualOrderName.get());
+            if (manual != null && manual != Items.AIR) return manual;
         }
         return getListItem();
     }

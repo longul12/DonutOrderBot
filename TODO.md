@@ -346,6 +346,17 @@
     interaction so toggle-sneak users can unsneak before opening storage.
     Version bumped to `0.5.22`.
 
+- Description: Fall back from blank manual target name to selected target item.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiOrderBot.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: `getTargetItemFilterName()` and `getDepositItem()` now use the item
+    selected in `target-item` when `target-mode` is `Manual_String` but
+    `manual-order-name` is blank or cannot resolve. This prevents false missing
+    `/order` argument errors when users configured the item list. Version bumped
+    to `0.5.23`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -361,7 +372,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.22-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.23-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
