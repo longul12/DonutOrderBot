@@ -229,6 +229,15 @@ public class KamiSpawnerProtect extends Module {
         .build()
     );
 
+    private final Setting<Double> groundItemPickupRadius = sgGeneral.add(new DoubleSetting.Builder()
+        .name("ground-item-pickup-radius")
+        .description("Chi item entity trong tam hut nay moi chan dap va kich hoat /sell cleanup.")
+        .defaultValue(1.25)
+        .min(0.5)
+        .sliderRange(0.5, 3.0)
+        .build()
+    );
+
     private final Setting<Boolean> autoWalkToSpawner = sgGeneral.add(new BoolSetting.Builder()
         .name("auto-walk-to-spawner")
         .description("Cho phep dung Meteor/Baritone path manager de di toi Spawner ngoai tam interact.")
@@ -1483,7 +1492,7 @@ public class KamiSpawnerProtect extends Module {
 
     private int countGroundItemsNearPlayer() {
         if (mc.player == null || mc.world == null) return 0;
-        double radius = Math.max(0.5, groundItemCheckRadius.get());
+        double radius = Math.min(Math.max(0.5, groundItemCheckRadius.get()), Math.max(0.5, groundItemPickupRadius.get()));
         Box box = mc.player.getBoundingBox().expand(radius, 1.0, radius);
         return mc.world.getEntitiesByClass(ItemEntity.class, box, item -> item != null && item.isAlive()).size();
     }

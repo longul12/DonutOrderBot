@@ -50,6 +50,9 @@ the Minecraft mods folder to avoid duplicate module registration.
   faster than the module's normal action delay while still waiting for GUI sync.
 - `KamiSpawnerProtect` runs `/sell` cleanup in two separated shift-click passes
   so the server GUI can sync before the second fill pass.
+- `KamiSpawnerProtect` only lets ground item cleanup block breaking when item
+  entities are inside `ground-item-pickup-radius`, preventing repeated `/sell`
+  loops for items that are visible but too far away to pick up.
 - `KamiSpawnerProtect` uses the 0.5.7-style protect flow: sneak while breaking,
   release sneak once the spawner block is gone, then pick up and open the Ender
   Chest with direct `interactBlock` storage before continuing.
@@ -110,7 +113,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.19.jar
+build/libs/kami-order-bot-0.5.20.jar
 ```
 
 ## Maintainer Release Build
@@ -130,8 +133,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.19.jar
-build/libs/kami-order-bot-0.5.19-obfuscated.jar
+build/libs/kami-order-bot-0.5.20.jar
+build/libs/kami-order-bot-0.5.20-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -176,10 +179,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.19` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build restores the `0.5.17` SpawnerProtect
-store/Ender Chest timing by removing the `0.5.18` final check that could block
-reopening Ender Chest.
+Version `0.5.20` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build limits SpawnerProtect ground-item
+cleanup to item entities close enough to pick up, avoiding repeated `/sell` on
+unreachable dropped items.
 
 ## Known Limitations
 
