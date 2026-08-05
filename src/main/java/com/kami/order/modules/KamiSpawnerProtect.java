@@ -1447,13 +1447,17 @@ public class KamiSpawnerProtect extends Module {
 
     private boolean isSafeToBreakSpawner() {
         if (isBreakPickupSafeNow()) return true;
+        if (!hasSellableCleanupInventoryItems()) {
+            error(getBreakSafetyReason() + " Khong co stack ban duoc trong inventory nen khong mo /sell lap lai.");
+            state = State.ERROR;
+            return false;
+        }
         beginSellCleanup(getBreakSafetyReason());
         return false;
     }
 
     private boolean isBreakPickupSafeNow() {
-        return countEmptyInventorySlots() >= minEmptySlotsBeforeBreak.get()
-            && countGroundItemsNearPlayer() <= maxGroundItemsBeforeBreak.get();
+        return countEmptyInventorySlots() >= minEmptySlotsBeforeBreak.get();
     }
 
     private String getBreakSafetyReason() {
@@ -1461,12 +1465,6 @@ public class KamiSpawnerProtect extends Module {
         int minEmpty = minEmptySlotsBeforeBreak.get();
         if (emptySlots < minEmpty) {
             return "Inventory chi con " + emptySlots + " slot trong, can toi thieu " + minEmpty + ".";
-        }
-
-        int nearbyItems = countGroundItemsNearPlayer();
-        int maxGround = maxGroundItemsBeforeBreak.get();
-        if (nearbyItems > maxGround) {
-            return "Quanh chan co " + nearbyItems + " item entity, vuot gioi han " + maxGround + ".";
         }
 
         return "Chua dat dieu kien an toan de dap Spawner.";
@@ -1486,6 +1484,14 @@ public class KamiSpawnerProtect extends Module {
         double radius = Math.max(0.5, groundItemCheckRadius.get());
         Box box = mc.player.getBoundingBox().expand(radius, 1.0, radius);
         return mc.world.getEntitiesByClass(ItemEntity.class, box, item -> item != null && item.isAlive()).size();
+    }
+
+    private boolean hasSellableCleanupInventoryItems() {
+        if (mc.player == null) return false;
+        for (int i = 0; i < 36; i++) {
+            if (isSellableCleanupStack(mc.player.getInventory().getStack(i))) return true;
+        }
+        return false;
     }
 
     private int quickMoveSellableItems(int passes) {

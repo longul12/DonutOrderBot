@@ -42,9 +42,10 @@ the Minecraft mods folder to avoid duplicate module registration.
 - `KamiSpawnerProtect` detects unknown players around the saved spawner with a
   default range of 64 blocks and a slider up to 256 blocks.
 - `KamiSpawnerProtect` can open `/sell`, shift-click all sellable inventory
-  stacks into the sell GUI twice, and repeat cleanup until no dropped items
-  remain near the player before breaking a spawner. Its sell cleanup defaults to
-  `Safe_Whitelist` so unknown or protected items are not shifted into `/sell`.
+  stacks from player inventory into the sell GUI twice, and stop cleanup as soon
+  as enough inventory slots are free before breaking a spawner. Its sell cleanup
+  defaults to `Safe_Whitelist` so unknown or protected items are not shifted
+  into `/sell`.
 - `KamiSpawnerProtect` has separate sell cleanup timing settings
   (`sell-open-delay`, `sell-close-delay`, `sell-pickup-wait`) so `/sell` can run
   faster than the module's normal action delay while still waiting for GUI sync.
@@ -110,7 +111,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.19.jar
+build/libs/kami-order-bot-0.5.20.jar
 ```
 
 ## Maintainer Release Build
@@ -130,8 +131,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.19.jar
-build/libs/kami-order-bot-0.5.19-obfuscated.jar
+build/libs/kami-order-bot-0.5.20.jar
+build/libs/kami-order-bot-0.5.20-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -176,10 +177,10 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.19` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build restores the `0.5.17` SpawnerProtect
-store/Ender Chest timing by removing the `0.5.18` final check that could block
-reopening Ender Chest.
+Version `0.5.20` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build changes SpawnerProtect `/sell`
+cleanup so it only runs when player inventory has sellable stacks and stops as
+soon as the configured empty-slot requirement is met.
 
 ## Known Limitations
 

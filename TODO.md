@@ -315,6 +315,17 @@
     timing path as `0.5.17`, which was verified by the user to open Ender Chest.
     Version bumped to `0.5.19`.
 
+- Description: Limit SpawnerProtect `/sell` cleanup to inventory items.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: `isBreakPickupSafeNow()` now depends on the configured empty-slot
+    requirement only. `/sell` cleanup starts only when the player inventory has
+    sellable stacks, and it stops immediately once enough empty slots are
+    available. Ground item entities no longer cause repeated `/sell` loops.
+    Version bumped to `0.5.20`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -330,7 +341,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.19-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.20-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
