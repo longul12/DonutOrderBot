@@ -293,6 +293,18 @@
     press/release and Ender Chest opening uses the old direct `interactBlock`
     path. Version bumped to `0.5.17`.
 
+- Description: Add final SpawnerProtect store check before ending a cycle.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Added `FINAL_STORE_CHECK`. After storage appears complete, Protect
+    checks player inventory again; if any spawner remains, it closes the current
+    GUI, forces sneak off, reopens Ender Chest with direct `interactBlock`, and
+    retries storage up to a bounded attempt count. Before
+    `disconnect-after-clear` disconnects, Protect also scans once more for a
+    nearby spawner and continues if one is found. Version bumped to `0.5.18`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -308,7 +320,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.17-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.18-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.

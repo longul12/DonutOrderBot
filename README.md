@@ -53,6 +53,11 @@ the Minecraft mods folder to avoid duplicate module registration.
 - `KamiSpawnerProtect` uses the 0.5.7-style protect flow: sneak while breaking,
   release sneak once the spawner block is gone, then pick up and open the Ender
   Chest with direct `interactBlock` storage before continuing.
+- Before ending a store cycle, `KamiSpawnerProtect` runs one final inventory
+  check. If any spawner remains, it closes the current GUI, forces sneak off,
+  reopens the Ender Chest with direct `interactBlock`, and stores again.
+- When `disconnect-after-clear` is enabled, `KamiSpawnerProtect` scans once more
+  for a nearby spawner before disconnecting and continues securing it if found.
 - With `keep-running`, `KamiSpawnerProtect` continues to the next nearby spawner
   after storage even if the original threat is no longer detected.
 - During pickup wait, `KamiSpawnerProtect` stores any spawner found in inventory
@@ -110,7 +115,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.17.jar
+build/libs/kami-order-bot-0.5.18.jar
 ```
 
 ## Maintainer Release Build
@@ -130,8 +135,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.17.jar
-build/libs/kami-order-bot-0.5.17-obfuscated.jar
+build/libs/kami-order-bot-0.5.18.jar
+build/libs/kami-order-bot-0.5.18-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -176,10 +181,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.17` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build restores the old 0.5.7-style hold-sneak and
-direct Ender Chest open behavior while keeping later sell cleanup, pickup, and
-keep-running improvements.
+Version `0.5.18` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build adds final SpawnerProtect checks for
+leftover inventory spawners and nearby spawners before disconnect.
 
 ## Known Limitations
 

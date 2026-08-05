@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.17.jar
+build/libs/kami-order-bot-0.5.18.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.17-obfuscated.jar
+build/libs/kami-order-bot-0.5.18-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -150,6 +150,13 @@ handlers, enum constants, and reflection.
   presses/releases the sneak key directly and sets `player.setSneaking(...)`.
   Ender Chest opening should stay as direct `interactBlock` unless fresh
   in-game validation proves another flow is safer.
+- SpawnerProtect must run `FINAL_STORE_CHECK` before ending a store cycle. If
+  `hasSpawnerInInventory()` is still true, close any open container, force
+  `sendSneak(false)`, reset store retry counters, and reopen Ender Chest through
+  the normal direct `interactBlock` path.
+- Before `disconnect-after-clear` disconnects the client, SpawnerProtect should
+  call `refreshTargetSpawner(true)` one last time and continue the mine-store
+  flow if a nearby spawner is still loaded.
 - After storing, `keep-running` should continue to the next nearby spawner found
   by `refreshTargetSpawner(true)` even if the original threat has left.
 - During `WAIT_PICKUP`, do not rely only on `hasNewSpawnerPickedUp()`. If any
