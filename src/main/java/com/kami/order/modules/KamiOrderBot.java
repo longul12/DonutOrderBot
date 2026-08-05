@@ -1,10 +1,12 @@
 package com.kami.order.modules;
 
+import meteordevelopment.meteorclient.events.meteor.KeyEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.utils.misc.input.KeyAction;
 import meteordevelopment.orbit.EventHandler;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
@@ -20,6 +22,7 @@ import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import org.lwjgl.glfw.GLFW;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -383,6 +386,33 @@ public class KamiOrderBot extends Module {
         .build()
     );
 
+    private final Setting<Boolean> escCancel = sgConfirm.add(new BoolSetting.Builder()
+        .name("esc-cancel")
+        .description("Nhan ESC nhieu lan lien tiep de tu tat KamiOrderBot.")
+        .defaultValue(true)
+        .build()
+    );
+
+    private final Setting<Integer> escCancelPresses = sgConfirm.add(new IntSetting.Builder()
+        .name("esc-cancel-presses")
+        .description("So lan ESC can nhan lien tiep de tat module.")
+        .defaultValue(3)
+        .range(2, 10)
+        .sliderRange(2, 5)
+        .visible(escCancel::get)
+        .build()
+    );
+
+    private final Setting<Integer> escCancelWindow = sgConfirm.add(new IntSetting.Builder()
+        .name("esc-cancel-window")
+        .description("Khoang tick toi da giua cac lan ESC de tinh la lien tiep.")
+        .defaultValue(30)
+        .range(5, 120)
+        .sliderRange(10, 60)
+        .visible(escCancel::get)
+        .build()
+    );
+
     private final Setting<Boolean> chatFeedback = sgDebug.add(new BoolSetting.Builder()
         .name("chat-feedback")
         .description("In thong bao chi tiet ra chat.")
@@ -430,6 +460,8 @@ public class KamiOrderBot extends Module {
     private int currentOrderPlayerIndex = 0;
     private int ordersDoneForCurrentPlayer = 0;
     private List<String> runtimeOrderPlayers = List.of();
+    private int escPressCount = 0;
+    private int escWindowTicks = 0;
 
     /** 27 stack × 64 = 1 shulker đầy */
     private static final int ITEMS_PER_FILL = 1728;
@@ -553,6 +585,8 @@ public class KamiOrderBot extends Module {
         currentOrderPlayerIndex = 0;
         ordersDoneForCurrentPlayer = 0;
         runtimeOrderPlayers = List.of();
+        escPressCount = 0;
+        escWindowTicks = 0;
     }
 
     @EventHandler
@@ -567,6 +601,9 @@ public class KamiOrderBot extends Module {
             if (state == State.DONE && isActive()) toggle();
             return;
         }
+
+        if (escWindowTicks > 0) escWindowTicks--;
+        else escPressCount = 0;
 
         if (actionCooldown > 0) {
             actionCooldown--;
@@ -594,6 +631,25 @@ public class KamiOrderBot extends Module {
     }
 
     // ───────────────────── Steps ─────────────────────
+
+    @EventHandler
+    private void onKey(KeyEvent event) {
+        if (!escCancel.get() || !isActive()) return;
+        if (event.action != KeyAction.Press || event.key() != GLFW.GLFW_KEY_ESCAPE) return;
+
+        escPressCount++;
+        escWindowTicks = escCancelWindow.get();
+
+        if (escPressCount >= escCancelPresses.get()) {
+            log("Nhan ESC " + escPressCount + " lan - tu tat KamiOrderBot.");
+            escPressCount = 0;
+            escWindowTicks = 0;
+            resumeOrderAfterDrop = false;
+            nextActivateIsResume = false;
+            if (isContainerOpen()) closeScreen();
+            if (isActive()) toggle();
+        }
+    }
 
     private void handleSendOrder() {
         String cmdArg = getOrderCommandArg();

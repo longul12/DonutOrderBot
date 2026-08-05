@@ -32,6 +32,8 @@ the Minecraft mods folder to avoid duplicate module registration.
 - Confirms delivery with tooltip/color/fallback slot detection.
 - Can close the post-confirm reopened order GUI immediately with
   `fast-post-confirm-esc`.
+- Can cancel `KamiOrderBot` by pressing ESC multiple times in a configurable
+  window, defaulting to 3 presses.
 - Can trigger `KamiSpawnerDrop` when target items are depleted.
 - After SpawnerDrop finishes, it can resume OrderBot so newly collected target
   items are ordered until inventory is empty.
@@ -117,7 +119,7 @@ On Windows:
 Output JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.23.jar
+build/libs/kami-order-bot-0.5.24.jar
 ```
 
 ## Maintainer Release Build
@@ -137,8 +139,8 @@ To create the release obfuscated JAR, run the separate yGuard task:
 Artifacts:
 
 ```text
-build/libs/kami-order-bot-0.5.23.jar
-build/libs/kami-order-bot-0.5.23-obfuscated.jar
+build/libs/kami-order-bot-0.5.24.jar
+build/libs/kami-order-bot-0.5.24-obfuscated.jar
 ```
 
 yGuard mapping for crash-log reading is written locally to:
@@ -183,9 +185,9 @@ No Fabric API dependency is declared in this repository.
 
 ## Current Project Status
 
-Version `0.5.23` builds as a unified addon containing OrderBot, SpawnerDrop, and
-SpawnerProtect. The latest verified build makes OrderBot fall back to the
-selected `target-item` when `Manual_String` mode has a blank manual name.
+Version `0.5.24` builds as a unified addon containing OrderBot, SpawnerDrop, and
+SpawnerProtect. The latest verified build adds configurable ESC multi-press
+cancel support to `KamiOrderBot`.
 
 ## Known Limitations
 

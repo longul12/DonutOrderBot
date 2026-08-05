@@ -72,7 +72,7 @@ mc.interactionManager.clickSlot(menu.syncId, slotId, button, actionType, mc.play
 Expected JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.23.jar
+build/libs/kami-order-bot-0.5.24.jar
 ```
 
 Release obfuscation is a separate rename-only yGuard step that runs after
@@ -85,7 +85,7 @@ Fabric Loom `remapJar`:
 Obfuscated JAR:
 
 ```text
-build/libs/kami-order-bot-0.5.23-obfuscated.jar
+build/libs/kami-order-bot-0.5.24-obfuscated.jar
 ```
 
 yGuard mapping is written to `build/yguard/yguard-map.xml`. Keep that file
@@ -179,4 +179,8 @@ handlers, enum constants, and reflection.
 - In OrderBot `Manual_String` target mode, a blank `manual-order-name` must
   fall back to the selected `target-item` list entry so users who configured the
   item list are not blocked by the generic missing `/order` argument error.
+- OrderBot has `esc-cancel`, `esc-cancel-presses`, and `esc-cancel-window`
+  settings in the confirm group. Keep the behavior aligned with SpawnerDrop:
+  ESC press events count within the tick window, close any open container, clear
+  resume handoff flags, and toggle the module off.
 - There are no tests; build and in-game verification are both important.
