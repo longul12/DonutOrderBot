@@ -63,7 +63,6 @@ public class KamiSpawnerProtect extends Module {
     private static final double MAX_ENDER_CHEST_RANGE_SQ = MAX_ENDER_CHEST_RANGE * MAX_ENDER_CHEST_RANGE;
     private static final double MAX_INTERACT_RANGE_SQ = 36.0;
     private static final int FORCED_GUI_CLOSE_ATTEMPTS = 3;
-    private static final int FINAL_STORE_CHECK_MAX_ATTEMPTS = 3;
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgThreat = settings.createGroup("Threat");
@@ -352,8 +351,6 @@ public class KamiSpawnerProtect extends Module {
     private int sellCleanupAttempts;
     private int sellVerifyTicks;
     private int forcedGuiCloseAttempts;
-    private int finalStoreCheckTicks;
-    private int finalStoreCheckAttempts;
 
     public KamiSpawnerProtect() {
         super(Categories.Misc, "kami-spawner-protect",
@@ -415,8 +412,6 @@ public class KamiSpawnerProtect extends Module {
         sellCleanupAttempts = 0;
         sellVerifyTicks = 0;
         forcedGuiCloseAttempts = 0;
-        finalStoreCheckTicks = 0;
-        finalStoreCheckAttempts = 0;
     }
 
     @EventHandler
@@ -451,7 +446,6 @@ public class KamiSpawnerProtect extends Module {
             case OPEN_ENDER_CHEST -> handleOpenEnderChest();
             case STORE_SPAWNER -> handleStoreSpawner();
             case VERIFY_STORE -> handleVerifyStore();
-            case FINAL_STORE_CHECK -> handleFinalStoreCheck();
             case RESTORE_STATE -> handleRestoreState();
             case COMPLETED -> finish("Hoan tat bao ve Spawner - module tu tat.");
             case ERROR -> finish("Dung SpawnerProtect do loi/trang thai khong hop le.");
@@ -933,8 +927,9 @@ public class KamiSpawnerProtect extends Module {
                 return;
             }
 
-            log("Da cat het cac stack Spawner theo GUI - kiem tra lan cuoi.");
-            beginFinalStoreCheck();
+            closeScreen();
+            log("Da cat het tat ca stack Spawner - dong GUI.");
+            afterOneSpawnerCycle();
             scheduleDelay();
             return;
         }
@@ -945,8 +940,9 @@ public class KamiSpawnerProtect extends Module {
         }
 
         if (!hasSpawnerInInventory()) {
-            log("Da cat het Spawner - kiem tra lan cuoi.");
-            beginFinalStoreCheck();
+            closeScreen();
+            log("Da cat het Spawner - dong GUI.");
+            afterOneSpawnerCycle();
             scheduleDelay();
             return;
         }
@@ -963,50 +959,6 @@ public class KamiSpawnerProtect extends Module {
         state = State.ERROR;
     }
 
-    private void beginFinalStoreCheck() {
-        finalStoreCheckTicks = 0;
-        state = State.FINAL_STORE_CHECK;
-    }
-
-    private void handleFinalStoreCheck() {
-        finalStoreCheckTicks++;
-        if (finalStoreCheckTicks < 2) {
-            scheduleFixedDelay(1);
-            return;
-        }
-
-        if (!hasSpawnerInInventory()) {
-            if (isContainerOpen()) closeScreen();
-            finalStoreCheckAttempts = 0;
-            log("Kiem tra lan cuoi: inventory khong con Spawner.");
-            afterOneSpawnerCycle();
-            scheduleDelay();
-            return;
-        }
-
-        if (isContainerOpen()) {
-            warning("Kiem tra lan cuoi: van con Spawner trong inventory - dong GUI de mo lai Ender Chest.");
-            closeScreen();
-            scheduleFixedDelay(1);
-            return;
-        }
-
-        if (finalStoreCheckAttempts >= FINAL_STORE_CHECK_MAX_ATTEMPTS) {
-            error("Kiem tra lan cuoi van con Spawner trong inventory sau " + FINAL_STORE_CHECK_MAX_ATTEMPTS + " lan thu - giu lai de tranh thao tac sai.");
-            state = State.ERROR;
-            return;
-        }
-
-        finalStoreCheckAttempts++;
-        warning("Kiem tra lan cuoi: con Spawner chua cat - tat sneak va mo lai Ender Chest lan " + finalStoreCheckAttempts + "/" + FINAL_STORE_CHECK_MAX_ATTEMPTS + ".");
-        sendSneak(false);
-        sneakStarted = false;
-        waitTicks = 0;
-        storeRetryCount = 0;
-        state = State.FIND_ENDER_CHEST;
-        scheduleFixedDelay(1);
-    }
-
     private void handleRestoreState() {
         restoreState();
         state = keepRunning.get() ? State.ARMED : State.COMPLETED;
@@ -1018,17 +970,6 @@ public class KamiSpawnerProtect extends Module {
         restoreState();
         if (!keepRunning.get()) {
             if (disconnectAfterClear.get()) {
-                if (refreshTargetSpawner(true)) {
-                    PlayerEntity threat = findThreat();
-                    if (!ensureProtectGuiOwner(threat != null)) {
-                        state = State.SCAN_PLAYERS;
-                        return;
-                    }
-                    confirmedThreat = threat;
-                    log("Kiem tra truoc khi out: van con Spawner " + targetSpawnerPos.toShortString() + " - tiep tuc dap va cat.");
-                    state = shouldWalkToTarget() ? State.MOVE_TO_SPAWNER : State.SWAP_PICKAXE;
-                    return;
-                }
                 disconnectAfterSpawnerClear();
                 return;
             }
@@ -1781,7 +1722,7 @@ public class KamiSpawnerProtect extends Module {
             case WAIT_PICKUP -> "pickup";
             case FIND_ENDER_CHEST -> "find echest";
             case OPEN_ENDER_CHEST -> "open echest";
-            case STORE_SPAWNER, VERIFY_STORE, FINAL_STORE_CHECK -> "store";
+            case STORE_SPAWNER, VERIFY_STORE -> "store";
             case COMPLETED -> "done";
             case ERROR -> "error";
             default -> state.name().toLowerCase(Locale.ROOT);
@@ -1819,7 +1760,6 @@ public class KamiSpawnerProtect extends Module {
         OPEN_ENDER_CHEST,
         STORE_SPAWNER,
         VERIFY_STORE,
-        FINAL_STORE_CHECK,
         RESTORE_STATE,
         COMPLETED,
         ERROR

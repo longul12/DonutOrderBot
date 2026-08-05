@@ -305,6 +305,16 @@
     `disconnect-after-clear` disconnects, Protect also scans once more for a
     nearby spawner and continues if one is found. Version bumped to `0.5.18`.
 
+- Description: Roll back SpawnerProtect final store check to restore Ender Chest opening.
+  Priority: Critical
+  Status: Completed
+  Files: `src/main/java/com/kami/order/modules/KamiSpawnerProtect.java`,
+    `README.md`, `AGENTS.md`, `TODO.md`, `gradle.properties`
+  Notes: Removed the `0.5.18` `FINAL_STORE_CHECK` state and pre-disconnect
+    rescan. Store completion now closes the chest and returns through the same
+    timing path as `0.5.17`, which was verified by the user to open Ender Chest.
+    Version bumped to `0.5.19`.
+
 ## In Progress
 
 - Description: In-game validation on the live Donut SMP GUI.
@@ -320,7 +330,7 @@
 - Description: Validate the obfuscated JAR in a real Minecraft client.
   Priority: High
   Status: Not Started
-  Files: `build/libs/kami-order-bot-0.5.18-obfuscated.jar`
+  Files: `build/libs/kami-order-bot-0.5.19-obfuscated.jar`
   Notes: Confirm Fabric Loader loads the addon, Meteor registers both modules,
     mixin startup succeeds, settings load, and OrderBot/SpawnerDrop handoff
     reflection still works.
